@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckIcon,
   ChevronRightIcon,
@@ -10,6 +10,15 @@ import {
   ShieldIcon,
 } from "@/components/icons";
 import styles from "./mdm-messaging.module.css";
+import {
+  isTerminalMessageJob,
+  messageJobStatusLabel,
+  parseMessageJob,
+  type MessageJob,
+} from "./mdm-message-job";
+
+const DEVICE_RESULTS_PAGE_SIZE = 100;
+const ACTIVE_MESSAGE_JOB_KEY = "teklease-active-mdm-message-job";
 
 type Device = {
   device_id: string;
@@ -32,6 +41,15 @@ type DeviceGroup = {
   name: string;
 };
 
+type MdmCapabilities = {
+  max_specific_devices: number;
+  query_batch_size: number;
+  query_concurrency: number;
+  max_message_length: number;
+  max_identifier_length: number;
+  max_import_bytes: number;
+};
+
 type ApiResponse = {
   status?: string;
   message?: string;
@@ -40,6 +58,8 @@ type ApiResponse = {
   groups?: unknown;
   templates?: unknown;
   template?: unknown;
+  job?: unknown;
+  capabilities?: unknown;
 };
 
 function responseMessage(data: ApiResponse) {
@@ -74,8 +94,33 @@ function isDeviceGroup(value: unknown): value is DeviceGroup {
   );
 }
 
+function isPositiveInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0;
+}
+
+function isMdmCapabilities(value: unknown): value is MdmCapabilities {
+  if (typeof value !== "object" || value === null) return false;
+  const capabilities = value as Record<string, unknown>;
+  return (
+    isPositiveInteger(capabilities.max_specific_devices) &&
+    isPositiveInteger(capabilities.query_batch_size) &&
+    isPositiveInteger(capabilities.query_concurrency) &&
+    isPositiveInteger(capabilities.max_message_length) &&
+    isPositiveInteger(capabilities.max_identifier_length) &&
+    isPositiveInteger(capabilities.max_import_bytes)
+  );
+}
+
 function parseIdentifiers(value: string) {
   return [...new Set(value.split(/[\r\n,;\t]+/).map((item) => item.trim()).filter(Boolean))];
+}
+
+function deviceBatches(identifiers: string[], batchSize: number) {
+  const batches: string[][] = [];
+  for (let index = 0; index < identifiers.length; index += batchSize) {
+    batches.push(identifiers.slice(index, index + batchSize));
+  }
+  return batches;
 }
 
 export function MdmMessaging() {
@@ -88,11 +133,16 @@ export function MdmMessaging() {
   const [message, setMessage] = useState("");
   const [templates, setTemplates] = useState<string[]>([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
+  const [capabilities, setCapabilities] = useState<MdmCapabilities | null>(null);
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isRetryingJob, setIsRetryingJob] = useState(false);
+  const [activeJob, setActiveJob] = useState<MessageJob | null>(null);
+  const [visibleDeviceCount, setVisibleDeviceCount] = useState(DEVICE_RESULTS_PAGE_SIZE);
   const [notice, setNotice] = useState<{ tone: "error" | "success"; text: string } | null>(null);
+  const jobRequestRef = useRef<{ signature: string; key: string } | null>(null);
 
   const identifiers = useMemo(() => parseIdentifiers(input), [input]);
   const selectedDevices = devices.filter(
@@ -115,9 +165,7 @@ export function MdmMessaging() {
           !response.ok ||
           data.status !== "success" ||
           !Array.isArray(data.templates) ||
-          !data.templates.every(
-            (template) => typeof template === "string" && template.length <= 1000,
-          )
+          !data.templates.every((template) => typeof template === "string")
         ) {
           throw new Error(responseMessage(data));
         }
@@ -137,23 +185,160 @@ export function MdmMessaging() {
     return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadCapabilities() {
+      try {
+        const response = await fetch("/api/mdm/capabilities", {
+          method: "GET",
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const data = (await response.json()) as ApiResponse;
+        if (
+          !response.ok ||
+          data.status !== "success" ||
+          !isMdmCapabilities(data.capabilities)
+        ) {
+          throw new Error(responseMessage(data));
+        }
+        setCapabilities(data.capabilities);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        setNotice({
+          tone: "error",
+          text: error instanceof Error ? error.message : "No se pudo cargar la configuración MDM.",
+        });
+      }
+    }
+
+    void loadCapabilities();
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    let restoreTimeout: number | undefined;
+    try {
+      const savedJob = window.localStorage.getItem(ACTIVE_MESSAGE_JOB_KEY);
+      if (!savedJob) return undefined;
+      const job = parseMessageJob(JSON.parse(savedJob));
+      if (job) restoreTimeout = window.setTimeout(() => setActiveJob(job), 0);
+    } catch {
+      window.localStorage.removeItem(ACTIVE_MESSAGE_JOB_KEY);
+    }
+
+    return () => {
+      if (restoreTimeout !== undefined) window.clearTimeout(restoreTimeout);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (activeJob) {
+      window.localStorage.setItem(ACTIVE_MESSAGE_JOB_KEY, JSON.stringify(activeJob));
+    }
+  }, [activeJob]);
+
+  useEffect(() => {
+    if (!activeJob || isTerminalMessageJob(activeJob)) return;
+
+    const jobId = activeJob.id;
+    const controller = new AbortController();
+    let stopped = false;
+    let timeout: number;
+
+    async function pollJob() {
+      let continuePolling = true;
+      try {
+        const response = await fetch(`/api/mdm/message-jobs/${encodeURIComponent(jobId)}`, {
+          method: "GET",
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const data = (await response.json()) as ApiResponse;
+        const job = parseMessageJob(data);
+        if (!response.ok || data.status !== "success" || !job) {
+          throw new Error(responseMessage(data));
+        }
+
+        setActiveJob(job);
+        if (job.status === "SUCCEEDED") {
+          continuePolling = false;
+          setNotice({ tone: "success", text: "Headwind aceptó todos los mensajes del envío." });
+        } else if (isTerminalMessageJob(job)) {
+          continuePolling = false;
+          setNotice({
+            tone: "error",
+            text: `El envío terminó con ${job.failed} dispositivo${job.failed === 1 ? "" : "s"} fallido${job.failed === 1 ? "" : "s"}.`,
+          });
+        }
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        setNotice({
+          tone: "error",
+          text: error instanceof Error ? error.message : "No se pudo actualizar el progreso.",
+        });
+      } finally {
+        if (!stopped && continuePolling) timeout = window.setTimeout(pollJob, 2_000);
+      }
+    }
+
+    timeout = window.setTimeout(pollJob, 2_000);
+
+    return () => {
+      stopped = true;
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [activeJob]);
+
   function handleIdentifierChange(value: string) {
     setInput(value);
     setNotice(null);
     setDevices([]);
     setSelected(new Set());
+    setVisibleDeviceCount(DEVICE_RESULTS_PAGE_SIZE);
+  }
+
+  async function handleDeviceFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!capabilities) {
+      setNotice({ tone: "error", text: "La configuración MDM todavía está cargando." });
+      return;
+    }
+    if (file.size > capabilities.max_import_bytes) {
+      setNotice({
+        tone: "error",
+        text: `El archivo no puede superar ${Math.ceil(capabilities.max_import_bytes / 1_000_000)} MB.`,
+      });
+      return;
+    }
+
+    try {
+      handleIdentifierChange(await file.text());
+    } catch {
+      setNotice({ tone: "error", text: "No se pudo leer el archivo seleccionado." });
+    }
   }
 
   async function handleVerify(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!capabilities) {
+      setNotice({ tone: "error", text: "La configuración MDM todavía está cargando." });
+      return;
+    }
     if (
       identifiers.length === 0 ||
-      identifiers.length > 100 ||
-      identifiers.some((identifier) => identifier.length > 128)
+      identifiers.length > capabilities.max_specific_devices ||
+      identifiers.some(
+        (identifier) => identifier.length > capabilities.max_identifier_length,
+      )
     ) {
       setNotice({
         tone: "error",
-        text: "Ingresá entre 1 y 100 Device IDs o IMEIs válidos.",
+        text: `Ingresá entre 1 y ${capabilities.max_specific_devices} Device IDs o IMEIs válidos.`,
       });
       return;
     }
@@ -164,26 +349,39 @@ export function MdmMessaging() {
     setSelected(new Set());
 
     try {
-      const response = await fetch("/api/mdm/devices/query", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ devices: identifiers }),
-      });
-      const data = (await response.json()) as ApiResponse;
+      const verifiedDevices: Device[] = [];
+      const batches = deviceBatches(identifiers, capabilities.query_batch_size);
 
-      if (!response.ok || data.status !== "success") {
-        throw new Error(responseMessage(data));
-      }
-      if (!Array.isArray(data.results)) {
-        throw new Error("Headwind MDM devolvió una respuesta incompleta.");
-      }
-      const verifiedDevices = data.results.filter(isDevice);
-      if (verifiedDevices.length !== data.results.length) {
-        throw new Error("Headwind MDM devolvió datos incompletos.");
+      for (
+        let offset = 0;
+        offset < batches.length;
+        offset += capabilities.query_concurrency
+      ) {
+        const batchResults = await Promise.all(
+          batches
+            .slice(offset, offset + capabilities.query_concurrency)
+            .map(async (batch) => {
+            const response = await fetch("/api/mdm/devices/query", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ devices: batch }),
+            });
+            const data = (await response.json()) as ApiResponse;
+            if (!response.ok || data.status !== "success") {
+              throw new Error(responseMessage(data));
+            }
+            if (!Array.isArray(data.results) || !data.results.every(isDevice)) {
+              throw new Error("Headwind MDM devolvió datos incompletos.");
+            }
+            return data.results;
+          }),
+        );
+        verifiedDevices.push(...batchResults.flat());
       }
 
       const foundDevices = verifiedDevices.filter((device) => device.found);
       setDevices(verifiedDevices);
+      setVisibleDeviceCount(DEVICE_RESULTS_PAGE_SIZE);
       setSelected(new Set(foundDevices.map((device) => device.device_id)));
       setNotice(
         foundDevices.length === 0
@@ -297,6 +495,11 @@ export function MdmMessaging() {
     event.preventDefault();
     const cleanMessage = message.trim();
 
+    if (!capabilities) {
+      setNotice({ tone: "error", text: "La configuración MDM todavía está cargando." });
+      return;
+    }
+
     if (targetMode === "devices" && selectedDevices.length === 0) {
       setNotice({ tone: "error", text: "Seleccioná al menos un dispositivo verificado." });
       return;
@@ -305,10 +508,10 @@ export function MdmMessaging() {
       setNotice({ tone: "error", text: "Seleccioná un grupo antes de enviar." });
       return;
     }
-    if (!cleanMessage || cleanMessage.length > 1000) {
+    if (!cleanMessage || cleanMessage.length > capabilities.max_message_length) {
       setNotice({
         tone: "error",
-        text: "El mensaje debe contener entre 1 y 1000 caracteres.",
+        text: `El mensaje debe contener entre 1 y ${capabilities.max_message_length} caracteres.`,
       });
       return;
     }
@@ -327,11 +530,57 @@ export function MdmMessaging() {
     ) {
       return;
     }
+    if (
+      targetMode === "devices" &&
+      selectedDevices.length > capabilities.query_batch_size &&
+      !window.confirm(
+        `¿Confirmás el envío en segundo plano a ${selectedDevices.length} dispositivos?`,
+      )
+    ) {
+      return;
+    }
 
     setIsSending(true);
     setNotice(null);
 
     try {
+      if (
+        targetMode === "devices" &&
+        selectedDevices.length > capabilities.query_batch_size
+      ) {
+        const jobDevices = selectedDevices.map((device) => device.device_id);
+        const signature = `${cleanMessage}\u0000${jobDevices.join("\u0000")}`;
+        if (jobRequestRef.current?.signature !== signature) {
+          jobRequestRef.current = { signature, key: crypto.randomUUID() };
+        }
+
+        const response = await fetch("/api/mdm/message-jobs", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key": jobRequestRef.current.key,
+          },
+          body: JSON.stringify({
+            devices: jobDevices,
+            message: cleanMessage,
+          }),
+        });
+        const data = (await response.json()) as ApiResponse;
+        const job = parseMessageJob(data);
+        if (!response.ok || data.status !== "success" || !job) {
+          throw new Error(responseMessage(data));
+        }
+
+        setActiveJob(job);
+        jobRequestRef.current = null;
+        setMessage("");
+        setNotice({
+          tone: "success",
+          text: `Envío ${job.id} creado. Podés seguir el progreso sin mantener esta solicitud abierta.`,
+        });
+        return;
+      }
+
       const response = await fetch("/api/mdm/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -386,6 +635,33 @@ export function MdmMessaging() {
       });
     } finally {
       setIsSending(false);
+    }
+  }
+
+  async function handleRetryFailures() {
+    if (!activeJob || activeJob.failed === 0) return;
+
+    setIsRetryingJob(true);
+    setNotice(null);
+    try {
+      const response = await fetch(
+        `/api/mdm/message-jobs/${encodeURIComponent(activeJob.id)}/retry-failures`,
+        { method: "POST" },
+      );
+      const data = (await response.json()) as ApiResponse;
+      const job = parseMessageJob(data);
+      if (!response.ok || data.status !== "success" || !job) {
+        throw new Error(responseMessage(data));
+      }
+      setActiveJob(job);
+      setNotice({ tone: "success", text: "Los errores transitorios volvieron a la cola." });
+    } catch (error) {
+      setNotice({
+        tone: "error",
+        text: error instanceof Error ? error.message : "No se pudieron reintentar los fallidos.",
+      });
+    } finally {
+      setIsRetryingJob(false);
     }
   }
 
@@ -475,16 +751,36 @@ export function MdmMessaging() {
                       rows={3}
                       disabled={isVerifying || isSending}
                     />
-                    <small>{identifiers.length} / 100</small>
+                    <small>
+                      {identifiers.length} / {capabilities?.max_specific_devices ?? "…"}
+                    </small>
                   </label>
-                  <button type="submit" disabled={isVerifying || isSending || identifiers.length === 0}>
+                  <button
+                    type="submit"
+                    disabled={
+                      isVerifying || isSending || identifiers.length === 0 || !capabilities
+                    }
+                  >
                     {isVerifying ? <span className={styles.spinner} /> : "Verificar"}
                   </button>
                 </form>
 
+                <div className={styles.importTools}>
+                  <span>Un identificador por línea, o separados por coma.</span>
+                  <label>
+                    Importar CSV o TXT
+                    <input
+                      type="file"
+                      accept=".csv,.txt,text/csv,text/plain"
+                      onChange={(event) => void handleDeviceFile(event)}
+                      disabled={isVerifying || isSending || !capabilities}
+                    />
+                  </label>
+                </div>
+
                 {devices.length > 0 ? (
                   <div className={styles.deviceList} aria-label="Dispositivos verificados">
-                    {devices.map((device) =>
+                    {devices.slice(0, visibleDeviceCount).map((device) =>
                       device.found ? (
                         <div
                           className={`${styles.deviceCard} ${
@@ -519,8 +815,26 @@ export function MdmMessaging() {
                         </div>
                       ),
                     )}
+                    {visibleDeviceCount < devices.length ? (
+                      <button
+                        className={styles.showMoreButton}
+                        type="button"
+                        onClick={() =>
+                          setVisibleDeviceCount((current) =>
+                            Math.min(current + DEVICE_RESULTS_PAGE_SIZE, devices.length),
+                          )
+                        }
+                      >
+                        Mostrar {Math.min(DEVICE_RESULTS_PAGE_SIZE, devices.length - visibleDeviceCount)} más
+                      </button>
+                    ) : null}
                     <div className={styles.selectionSummary}>
-                      {selectedDevices.length} dispositivo{selectedDevices.length === 1 ? "" : "s"} seleccionado{selectedDevices.length === 1 ? "" : "s"}
+                      <span>
+                        {selectedDevices.length} dispositivo{selectedDevices.length === 1 ? "" : "s"} seleccionado{selectedDevices.length === 1 ? "" : "s"}
+                      </span>
+                      <button type="button" onClick={() => setSelected(new Set())} disabled={isSending}>
+                        Quitar selección
+                      </button>
                     </div>
                   </div>
                 ) : null}
@@ -614,11 +928,13 @@ export function MdmMessaging() {
                     setNotice(null);
                   }}
                   rows={7}
-                  maxLength={1000}
+                  maxLength={capabilities?.max_message_length}
                   placeholder="Escribí aquí el aviso que recibirá el usuario…"
                   disabled={isSending}
                 />
-                <small>{message.length} / 1000</small>
+                <small>
+                  {message.length} / {capabilities?.max_message_length ?? "…"}
+                </small>
               </label>
 
               {notice ? (
@@ -632,6 +948,38 @@ export function MdmMessaging() {
                 </div>
               ) : null}
 
+              {activeJob ? (
+                <section className={styles.jobProgress} aria-label="Progreso del envío" aria-live="polite">
+                  <div className={styles.jobProgressHeading}>
+                    <div>
+                      <span>ENVÍO EN SEGUNDO PLANO</span>
+                      <strong>{messageJobStatusLabel(activeJob.status)}</strong>
+                    </div>
+                    <small>{activeJob.id}</small>
+                  </div>
+                  <progress
+                    max={Math.max(activeJob.total, 1)}
+                    value={Math.min(activeJob.accepted + activeJob.failed, activeJob.total)}
+                  />
+                  <dl>
+                    <div><dt>Total</dt><dd>{activeJob.total}</dd></div>
+                    <div><dt>Pendientes</dt><dd>{activeJob.pending}</dd></div>
+                    <div><dt>Aceptados</dt><dd>{activeJob.accepted}</dd></div>
+                    <div><dt>Fallidos</dt><dd>{activeJob.failed}</dd></div>
+                  </dl>
+                  {isTerminalMessageJob(activeJob) && activeJob.failed > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => void handleRetryFailures()}
+                      disabled={isRetryingJob}
+                    >
+                      {isRetryingJob ? "Reintentando…" : "Reintentar fallidos"}
+                    </button>
+                  ) : null}
+                  <p>“Aceptado” confirma la recepción de Headwind; la entrega final depende de la conexión MQTT.</p>
+                </section>
+              ) : null}
+
               <button
                 className={styles.sendButton}
                 type="submit"
@@ -641,7 +989,8 @@ export function MdmMessaging() {
                   !message.trim() ||
                   isSending ||
                   isVerifying ||
-                  isLoadingGroups
+                  isLoadingGroups ||
+                  !capabilities
                 }
               >
                 {isSending ? <span className={styles.spinner} /> : <MessageIcon />}

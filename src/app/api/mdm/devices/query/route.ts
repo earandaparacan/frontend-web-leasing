@@ -19,15 +19,14 @@ export async function POST(request: Request) {
   if (
     !Array.isArray(payload.devices) ||
     payload.devices.length === 0 ||
-    payload.devices.length > 100 ||
     !payload.devices.every(
-      (device) => typeof device === "string" && device.trim().length > 0 && device.length <= 128,
+      (device) => typeof device === "string" && device.trim().length > 0,
     )
   ) {
     return Response.json(
       {
         status: "error",
-        message: "Enviá entre 1 y 100 identificadores válidos.",
+        message: "Enviá al menos un identificador válido.",
       },
       { status: 400 },
     );

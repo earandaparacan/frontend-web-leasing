@@ -30,11 +30,10 @@ export async function POST(request: Request) {
 
   if (
     typeof payload.message !== "string" ||
-    payload.message.trim().length === 0 ||
-    payload.message.trim().length > 1000
+    payload.message.trim().length === 0
   ) {
     return Response.json(
-      { status: "error", message: "La plantilla debe contener entre 1 y 1000 caracteres." },
+      { status: "error", message: "La plantilla no puede estar vacía." },
       { status: 400 },
     );
   }

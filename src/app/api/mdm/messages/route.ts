@@ -21,11 +21,10 @@ export async function POST(request: Request) {
 
   if (
     typeof payload.message !== "string" ||
-    payload.message.trim().length === 0 ||
-    payload.message.trim().length > 1000
+    payload.message.trim().length === 0
   ) {
     return Response.json(
-      { status: "error", message: "El mensaje debe contener entre 1 y 1000 caracteres." },
+      { status: "error", message: "El mensaje no puede estar vacío." },
       { status: 400 },
     );
   }
@@ -67,16 +66,14 @@ export async function POST(request: Request) {
     payload.scope !== "devices" ||
     !Array.isArray(payload.devices) ||
     payload.devices.length === 0 ||
-    payload.devices.length > 100 ||
     !payload.devices.every(
       (device) =>
         typeof device === "string" &&
-        device.trim().length > 0 &&
-        device.trim().length <= 128,
+        device.trim().length > 0,
     )
   ) {
     return Response.json(
-      { status: "error", message: "Seleccioná entre 1 y 100 dispositivos válidos." },
+      { status: "error", message: "Seleccioná al menos un dispositivo válido." },
       { status: 400 },
     );
   }

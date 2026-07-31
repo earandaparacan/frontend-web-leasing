@@ -5,6 +5,8 @@ const DEFAULT_QUERY_PATH = "/api/v1/mdm/devices/query";
 const DEFAULT_ACTION_PATH = "/api/v1/mdm/devices/action";
 const DEFAULT_GROUPS_PATH = "/api/v1/mdm/groups";
 const DEFAULT_MESSAGE_PATH = "/api/v1/mdm/messages";
+const DEFAULT_MESSAGE_JOBS_PATH = "/api/v1/mdm/message-jobs";
+const DEFAULT_CAPABILITIES_PATH = "/api/v1/mdm/capabilities";
 const DEFAULT_LOCK_TEMPLATES_PATH = "/api/v1/mdm/lock-templates";
 const DEFAULT_MESSAGE_TEMPLATES_PATH = "/api/v1/mdm/message-templates";
 const LEGACY_QUERY_PATH = "/api/query";
@@ -34,6 +36,17 @@ export function getMdmMessageUrl() {
   return getBackendUrl(DEFAULT_MESSAGE_PATH);
 }
 
+export function getMdmMessageJobsUrl(jobId?: string, action?: "retry-failures") {
+  if (!jobId) return getBackendUrl(DEFAULT_MESSAGE_JOBS_PATH);
+
+  const jobPath = `${DEFAULT_MESSAGE_JOBS_PATH}/${encodeURIComponent(jobId)}`;
+  return getBackendUrl(action ? `${jobPath}/${action}` : jobPath);
+}
+
+export function getMdmCapabilitiesUrl() {
+  return getBackendUrl(DEFAULT_CAPABILITIES_PATH);
+}
+
 export function getMdmGroupsUrl() {
   return getBackendUrl(DEFAULT_GROUPS_PATH);
 }
@@ -51,6 +64,7 @@ export async function forwardMdmRequest(
   body: unknown = undefined,
   timeoutMilliseconds = 30_000,
   method: "GET" | "POST" = "POST",
+  additionalHeaders: Readonly<Record<string, string>> = {},
 ) {
   const cookieStore = await cookies();
   const session = cookieStore.get("teklease_staff_session")?.value;
@@ -74,6 +88,7 @@ export async function forwardMdmRequest(
       method,
       headers: {
         "Content-Type": "application/json",
+        ...additionalHeaders,
         Cookie: `sessionid=${session}${csrf ? `; csrftoken=${csrf}` : ""}`,
         ...(csrf ? { "X-CSRFToken": csrf } : {}),
         ...(basicAuthorization ? { Authorization: basicAuthorization } : {}),
