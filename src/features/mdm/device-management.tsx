@@ -4,13 +4,6 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { CheckIcon, LockIcon, ShieldIcon } from "@/components/icons";
 import styles from "./device-management.module.css";
 
-const DEFAULT_TEMPLATES = [
-  "Dispositivo bloqueado por Administración",
-  "Pago pendiente. Por favor, comuníquese con soporte.",
-  "Dispositivo bloqueado por auditoría interna",
-  "Equipo reportado como extraviado o perdido",
-];
-
 type Device = {
   device_id: string;
   imei?: string;
@@ -46,6 +39,14 @@ type ActionResult = {
 type ActionResponse = {
   status?: string;
   results?: unknown;
+  message?: string;
+  error?: string;
+};
+
+type TemplateResponse = {
+  status?: string;
+  templates?: unknown;
+  template?: unknown;
   message?: string;
   error?: string;
 };
@@ -121,7 +122,9 @@ export function DeviceManagement() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState("");
   const [message, setMessage] = useState("");
-  const [templates, setTemplates] = useState(DEFAULT_TEMPLATES);
+  const [templates, setTemplates] = useState<string[]>([]);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const [isQuerying, setIsQuerying] = useState(false);
   const [pendingAction, setPendingAction] = useState<"lock" | "unlock" | null>(null);
   const [notice, setNotice] = useState("");
@@ -149,26 +152,39 @@ export function DeviceManagement() {
     visibleDevices.filter((device) => device.found).every((device) => selected.has(device.device_id));
 
   useEffect(() => {
-    const storedTemplates = window.localStorage.getItem("teklease_mdm_lock_templates");
-    if (!storedTemplates) return;
+    const controller = new AbortController();
 
-    let parsedTemplates: string[] | undefined;
-    try {
-      const parsed: unknown = JSON.parse(storedTemplates);
-      if (
-        Array.isArray(parsed) &&
-        parsed.length <= 50 &&
-        parsed.every((template) => typeof template === "string" && template.length <= 500)
-      ) {
-        parsedTemplates = parsed;
+    async function loadTemplates() {
+      try {
+        const response = await fetch("/api/mdm/lock-templates", {
+          method: "GET",
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const data = (await response.json()) as TemplateResponse;
+        if (
+          !response.ok ||
+          data.status !== "success" ||
+          !Array.isArray(data.templates) ||
+          !data.templates.every(
+            (template) => typeof template === "string" && template.length <= 500,
+          )
+        ) {
+          throw new Error(responseMessage(data));
+        }
+        setTemplates(data.templates);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        setNotice(
+          error instanceof Error ? error.message : "No se pudieron cargar las plantillas.",
+        );
+      } finally {
+        if (!controller.signal.aborted) setIsLoadingTemplates(false);
       }
-    } catch {
-      window.localStorage.removeItem("teklease_mdm_lock_templates");
     }
 
-    if (!parsedTemplates) return;
-    const timer = window.setTimeout(() => setTemplates(parsedTemplates), 0);
-    return () => window.clearTimeout(timer);
+    void loadTemplates();
+    return () => controller.abort();
   }, []);
 
   function addLog(messageText: string, tone: LogEntry["tone"] = "info") {
@@ -262,7 +278,7 @@ export function DeviceManagement() {
     if (value) setMessage(value);
   }
 
-  function saveTemplate() {
+  async function saveTemplate() {
     const cleanMessage = message.trim();
     if (!cleanMessage) {
       setNotice("Escribí un mensaje antes de guardarlo como plantilla.");
@@ -272,12 +288,31 @@ export function DeviceManagement() {
       setNotice("Ese mensaje ya está guardado como plantilla.");
       return;
     }
-    setTemplates((current) => {
-      const next = [...current, cleanMessage];
-      window.localStorage.setItem("teklease_mdm_lock_templates", JSON.stringify(next));
-      return next;
-    });
+
+    setIsSavingTemplate(true);
     setNotice("");
+    try {
+      const response = await fetch("/api/mdm/lock-templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: cleanMessage }),
+      });
+      const data = (await response.json()) as TemplateResponse;
+      if (!response.ok || data.status !== "success" || typeof data.template !== "string") {
+        throw new Error(responseMessage(data));
+      }
+      const savedTemplate = data.template;
+      setTemplates((current) =>
+        current.includes(savedTemplate) ? current : [...current, savedTemplate],
+      );
+      setNotice("Plantilla guardada en el servidor.");
+    } catch (error) {
+      setNotice(
+        error instanceof Error ? error.message : "No se pudo guardar la plantilla.",
+      );
+    } finally {
+      setIsSavingTemplate(false);
+    }
   }
 
   async function triggerAction(action: "lock" | "unlock") {
@@ -478,15 +513,30 @@ export function DeviceManagement() {
                 </label>
                 <label>
                   <span>Plantilla</span>
-                  <select defaultValue="" onChange={(event) => applyTemplate(event.target.value)}>
-                    <option value="">Seleccionar plantilla</option>
+                  <select
+                    defaultValue=""
+                    onChange={(event) => applyTemplate(event.target.value)}
+                    disabled={isLoadingTemplates || templates.length === 0}
+                  >
+                    <option value="">
+                      {isLoadingTemplates
+                        ? "Cargando plantillas…"
+                        : templates.length === 0
+                          ? "Sin plantillas disponibles"
+                          : "Seleccionar plantilla"}
+                    </option>
                     {templates.map((template) => (
                       <option key={template} value={template}>{template}</option>
                     ))}
                   </select>
                 </label>
-                <button className={styles.saveTemplate} type="button" onClick={saveTemplate}>
-                  Guardar mensaje
+                <button
+                  className={styles.saveTemplate}
+                  type="button"
+                  onClick={saveTemplate}
+                  disabled={isSavingTemplate}
+                >
+                  {isSavingTemplate ? "Guardando…" : "Guardar mensaje"}
                 </button>
               </div>
 

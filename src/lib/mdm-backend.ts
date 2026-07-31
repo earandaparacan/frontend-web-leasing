@@ -5,6 +5,7 @@ const DEFAULT_QUERY_PATH = "/api/v1/mdm/devices/query";
 const DEFAULT_ACTION_PATH = "/api/v1/mdm/devices/action";
 const DEFAULT_GROUPS_PATH = "/api/v1/mdm/groups";
 const DEFAULT_MESSAGE_PATH = "/api/v1/mdm/messages";
+const DEFAULT_LOCK_TEMPLATES_PATH = "/api/v1/mdm/lock-templates";
 const LEGACY_QUERY_PATH = "/api/query";
 const LEGACY_ACTION_PATH = "/api/action";
 
@@ -34,6 +35,10 @@ export function getMdmMessageUrl() {
 
 export function getMdmGroupsUrl() {
   return getBackendUrl(DEFAULT_GROUPS_PATH);
+}
+
+export function getMdmLockTemplatesUrl() {
+  return getBackendUrl(DEFAULT_LOCK_TEMPLATES_PATH);
 }
 
 export async function forwardMdmRequest(
