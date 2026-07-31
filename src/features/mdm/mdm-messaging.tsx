@@ -355,11 +355,7 @@ export function MdmMessaging() {
         setMessage("");
         setNotice({
           tone: "success",
-          text:
-            data.message ??
-            (targetMode === "all"
-              ? "Mensaje enviado a todos los dispositivos."
-              : "Mensaje enviado al grupo seleccionado."),
+          text: "Mensaje aceptado por Headwind.",
         });
         return;
       }
@@ -378,7 +374,10 @@ export function MdmMessaging() {
       if (failedIds.size === 0) setMessage("");
       setNotice({
         tone: failedIds.size === 0 ? "success" : "error",
-        text: data.message ?? "Mensaje enviado al dispositivo.",
+        text:
+          failedIds.size === 0
+            ? "Mensaje aceptado por Headwind."
+            : data.message ?? "No se pudo enviar el mensaje a todos los dispositivos.",
       });
     } catch (error) {
       setNotice({
