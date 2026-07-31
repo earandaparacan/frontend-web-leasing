@@ -29,7 +29,9 @@ body {
 }
 
 button,
-input {
+input,
+textarea,
+select {
   font: inherit;
 }
 
@@ -44,6 +46,106 @@ button {
 
 a {
   color: inherit;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.workspace-shell {
+  min-height: 100svh;
+  background:
+    radial-gradient(circle at 96% 0, rgba(255, 94, 43, 0.085), transparent 24%),
+    var(--canvas);
+}
+
+.workspace-header {
+  display: flex;
+  min-height: 78px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 16px max(32px, calc((100vw - 1480px) / 2));
+  border-bottom: 1px solid #e5e5e5;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(18px);
+}
+
+.workspace-header__identity,
+.workspace-header__session,
+.workspace-header__user {
+  display: flex;
+  align-items: center;
+}
+
+.workspace-header__identity {
+  gap: 20px;
+}
+
+.workspace-header__divider {
+  width: 1px;
+  height: 28px;
+  background: #dedede;
+}
+
+.workspace-header__identity > div:last-child,
+.workspace-header__user > div {
+  display: grid;
+  gap: 2px;
+}
+
+.workspace-header__area {
+  color: var(--brand-orange);
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.workspace-header__identity strong {
+  color: #555;
+  font-size: 11px;
+}
+
+.workspace-header__session {
+  gap: 22px;
+}
+
+.workspace-header__user {
+  gap: 10px;
+}
+
+.workspace-header__user > span {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: #171717;
+  font-family: "Urbanist Variable", Urbanist, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.workspace-header__user strong {
+  font-size: 10px;
+}
+
+.workspace-header__user small {
+  max-width: 180px;
+  overflow: hidden;
+  color: #999;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .login-shell {
@@ -683,6 +785,37 @@ a:focus-visible {
   .form-panel__footer {
     gap: 16px;
     padding-inline: 18px;
+  }
+}
+
+@media (max-width: 720px) {
+  .workspace-header {
+    min-height: 68px;
+    padding: 14px;
+  }
+
+  .workspace-header__identity {
+    gap: 12px;
+  }
+
+  .workspace-header__identity > div:last-child,
+  .workspace-header__divider,
+  .workspace-header__user > div {
+    display: none;
+  }
+
+  .workspace-header__session {
+    gap: 10px;
+  }
+
+  .workspace-header__user > span {
+    width: 34px;
+    height: 34px;
+  }
+
+  .logout-button {
+    min-height: 38px;
+    padding: 9px 12px;
   }
 }
 

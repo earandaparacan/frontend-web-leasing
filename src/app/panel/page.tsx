@@ -1,8 +1,20 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { DeviceManagement } from "@/features/mdm/device-management";
 import { LogoutButton } from "@/features/auth/logout-button";
 import { getBackendUrl } from "@/lib/backend";
+
+type StaffUser = {
+  username: string;
+  groups: string[];
+};
+
+export const metadata: Metadata = {
+  title: "Control de equipos | Teklease",
+  description: "Consulta, bloqueo y desbloqueo seguro de equipos Teklease.",
+};
 
 export default async function PanelPage() {
   const cookieStore = await cookies();
@@ -12,7 +24,7 @@ export default async function PanelPage() {
     redirect("/");
   }
 
-  let user: { username: string; groups: string[] } | undefined;
+  let user: StaffUser | undefined;
 
   try {
     const response = await fetch(getBackendUrl("/api/v1/me"), {
@@ -44,44 +56,32 @@ export default async function PanelPage() {
   }
 
   return (
-    <main className="panel-placeholder">
-      <header>
-        <Link className="wordmark" href="/" aria-label="Teklease, inicio">
-          teklease<span>.</span>
-        </Link>
-        <LogoutButton />
+    <main className="workspace-shell">
+      <header className="workspace-header">
+        <div className="workspace-header__identity">
+          <Link className="wordmark" href="/panel" aria-label="Teklease, panel">
+            teklease<span>.</span>
+          </Link>
+          <span className="workspace-header__divider" aria-hidden="true" />
+          <div>
+            <span className="workspace-header__area">Operaciones</span>
+            <strong>Control de equipos</strong>
+          </div>
+        </div>
+
+        <div className="workspace-header__session">
+          <div className="workspace-header__user">
+            <span>{user.username.slice(0, 1).toUpperCase()}</span>
+            <div>
+              <strong>{user.username}</strong>
+              <small>{user.groups[0]}</small>
+            </div>
+          </div>
+          <LogoutButton />
+        </div>
       </header>
 
-      <section>
-        <span className="panel-placeholder__icon">
-          <CheckIcon />
-        </span>
-        <p className="auth-heading__kicker">Sesión administrativa activa</p>
-        <h1>Hola, {user.username}.</h1>
-        <p>
-          Tu acceso fue confirmado para{" "}
-          <strong>{user.groups.join(", ")}</strong>. Este espacio queda listo
-          para recibir los módulos del panel administrativo.
-        </p>
-      </section>
+      <DeviceManagement />
     </main>
-  );
-}
-
-function CheckIcon() {
-  return (
-    <svg
-      width="28"
-      height="28"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m5 12 4 4L19 6" />
-    </svg>
   );
 }
