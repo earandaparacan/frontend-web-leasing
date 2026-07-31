@@ -30,12 +30,6 @@ type Device = {
   error?: string;
 };
 
-type MessageResult = {
-  device_id: string;
-  success: boolean;
-  message: string;
-};
-
 type DeviceGroup = {
   id: number;
   name: string;
@@ -70,16 +64,6 @@ function isDevice(value: unknown): value is Device {
   if (typeof value !== "object" || value === null) return false;
   const device = value as Record<string, unknown>;
   return typeof device.device_id === "string" && typeof device.found === "boolean";
-}
-
-function isMessageResult(value: unknown): value is MessageResult {
-  if (typeof value !== "object" || value === null) return false;
-  const result = value as Record<string, unknown>;
-  return (
-    typeof result.device_id === "string" &&
-    typeof result.success === "boolean" &&
-    typeof result.message === "string"
-  );
 }
 
 function isDeviceGroup(value: unknown): value is DeviceGroup {
@@ -532,7 +516,6 @@ export function MdmMessaging() {
     }
     if (
       targetMode === "devices" &&
-      selectedDevices.length > capabilities.query_batch_size &&
       !window.confirm(
         `¿Confirmás el envío en segundo plano a ${selectedDevices.length} dispositivos?`,
       )
@@ -544,10 +527,7 @@ export function MdmMessaging() {
     setNotice(null);
 
     try {
-      if (
-        targetMode === "devices" &&
-        selectedDevices.length > capabilities.query_batch_size
-      ) {
+      if (targetMode === "devices") {
         const jobDevices = selectedDevices.map((device) => device.device_id);
         const signature = `${cleanMessage}\u0000${jobDevices.join("\u0000")}`;
         if (jobRequestRef.current?.signature !== signature) {
@@ -587,46 +567,17 @@ export function MdmMessaging() {
         body: JSON.stringify(
           targetMode === "all"
             ? { scope: "all", message: cleanMessage }
-            : targetMode === "group"
-              ? { scope: "group", group_id: selectedGroup?.id, message: cleanMessage }
-              : {
-                  scope: "devices",
-                  devices: selectedDevices.map((device) => device.device_id),
-                  message: cleanMessage,
-                },
+            : { scope: "group", group_id: selectedGroup?.id, message: cleanMessage },
         ),
       });
       const data = (await response.json()) as ApiResponse;
       if (!response.ok || data.status !== "success") {
         throw new Error(responseMessage(data));
       }
-      if (targetMode !== "devices") {
-        setMessage("");
-        setNotice({
-          tone: "success",
-          text: "Mensaje aceptado por Headwind.",
-        });
-        return;
-      }
-      if (!Array.isArray(data.results)) {
-        throw new Error("El servicio MDM devolvió un resultado incompleto.");
-      }
-      const results = data.results.filter(isMessageResult);
-      if (results.length !== data.results.length) {
-        throw new Error("El servicio MDM devolvió resultados incompletos.");
-      }
-
-      const failedIds = new Set(
-        results.filter((result) => !result.success).map((result) => result.device_id),
-      );
-      setSelected(failedIds);
-      if (failedIds.size === 0) setMessage("");
+      setMessage("");
       setNotice({
-        tone: failedIds.size === 0 ? "success" : "error",
-        text:
-          failedIds.size === 0
-            ? "Mensaje aceptado por Headwind."
-            : data.message ?? "No se pudo enviar el mensaje a todos los dispositivos.",
+        tone: "success",
+        text: "Mensaje aceptado por Headwind.",
       });
     } catch (error) {
       setNotice({
@@ -995,7 +946,9 @@ export function MdmMessaging() {
               >
                 {isSending ? <span className={styles.spinner} /> : <MessageIcon />}
                 {isSending
-                  ? "Enviando…"
+                  ? targetMode === "devices"
+                    ? "Creando envío…"
+                    : "Enviando…"
                   : targetMode === "all"
                     ? "Enviar a todos los dispositivos"
                     : targetMode === "group"

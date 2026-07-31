@@ -1,6 +1,6 @@
 # Contrato de trabajos de mensajería MDM
 
-La web utiliza este contrato para envíos de dispositivos específicos que superan el lote directo. Django publica los límites vigentes, persiste cada trabajo y lo procesa mediante una cola durable.
+La web utiliza este contrato para todos los envíos a dispositivos específicos, sin importar la cantidad seleccionada. Django publica los límites vigentes, persiste cada trabajo y lo procesa mediante una cola durable.
 
 ## Capacidades
 
