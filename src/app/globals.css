@@ -1,0 +1,698 @@
+@import "tailwindcss";
+
+:root {
+  --brand-orange: #ff5e2b;
+  --brand-orange-hover: #e94d1b;
+  --ink: #171717;
+  --muted: #727272;
+  --canvas: #f7f7f7;
+  --surface: #ffffff;
+  --border: #e1e1e1;
+  --error: #b30411;
+  --success: #68a56d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--canvas);
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background: var(--canvas);
+  font-family: "Inter Variable", Inter, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  border: 0;
+}
+
+a {
+  color: inherit;
+}
+
+.login-shell {
+  display: grid;
+  min-height: 100svh;
+  grid-template-columns: minmax(420px, 43%) minmax(0, 57%);
+  background: var(--canvas);
+}
+
+.brand-panel {
+  position: relative;
+  min-height: 100svh;
+  overflow: hidden;
+  color: #fff;
+  background: #000;
+}
+
+.brand-panel__image {
+  object-fit: cover;
+  object-position: 58% center;
+  opacity: 0.92;
+  filter: saturate(1.03) contrast(1.03);
+}
+
+.brand-panel__veil {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, #000 0%, rgba(0, 0, 0, 0.96) 25%, rgba(0, 0, 0, 0.32) 75%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.3), transparent 30%, transparent 68%, rgba(0, 0, 0, 0.84));
+}
+
+.brand-panel__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-height: 100svh;
+  flex-direction: column;
+  padding: clamp(32px, 5vw, 64px) clamp(30px, 4.3vw, 62px) 42px;
+}
+
+.wordmark {
+  width: fit-content;
+  color: #090909;
+  font-family: "Urbanist Variable", Urbanist, sans-serif;
+  font-size: 29px;
+  font-weight: 750;
+  letter-spacing: -1.8px;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.wordmark span {
+  color: var(--brand-orange);
+}
+
+.wordmark--light {
+  color: #fff;
+}
+
+.brand-copy {
+  width: min(500px, 96%);
+  margin: auto 0;
+  padding: 70px 0 80px;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 24px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.eyebrow::before {
+  width: 26px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--brand-orange);
+  content: "";
+}
+
+.eyebrow--light {
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.brand-copy h1 {
+  max-width: 480px;
+  margin: 0;
+  font-family: "Urbanist Variable", Urbanist, sans-serif;
+  font-size: clamp(42px, 4.4vw, 64px);
+  font-weight: 630;
+  letter-spacing: -0.052em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+.brand-copy__description {
+  max-width: 430px;
+  margin: 24px 0 28px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.benefit-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.benefit-list span {
+  padding: 9px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.045);
+  font-size: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.secure-caption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  margin: 24px 0 0;
+  color: #8b8b8b;
+  font-size: 12px;
+}
+
+.secure-caption > span {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--success);
+  background: rgba(104, 165, 109, 0.12);
+}
+
+.secure-caption svg {
+  width: 13px;
+  height: 13px;
+  stroke-width: 2;
+}
+
+.secure-caption--dark {
+  justify-content: flex-start;
+  margin-top: auto;
+  color: rgba(255, 255, 255, 0.48);
+}
+
+.secure-caption--dark > span {
+  color: #fff;
+  background: var(--brand-orange);
+}
+
+.form-panel {
+  position: relative;
+  display: flex;
+  min-height: 100svh;
+  flex-direction: column;
+  background:
+    radial-gradient(circle at 75% 50%, rgba(255, 255, 255, 0.9), transparent 34%),
+    var(--canvas);
+}
+
+.form-panel__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 35px clamp(34px, 4.2vw, 64px);
+  color: #8a8a8a;
+  font-size: 12px;
+}
+
+.form-panel__top a {
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+
+.form-panel__top a:hover {
+  color: var(--ink);
+}
+
+.portal-label {
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.mobile-header {
+  display: none;
+}
+
+.auth-card {
+  width: min(460px, calc(100% - 48px));
+  margin: auto;
+  padding: 46px 0 68px;
+}
+
+.brand-marker {
+  width: 42px;
+  height: 5px;
+  margin-bottom: 30px;
+  border-radius: 999px;
+  background: var(--brand-orange);
+}
+
+.auth-heading__kicker {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--brand-orange);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.auth-heading h2 {
+  margin: 0;
+  font-family: "Urbanist Variable", Urbanist, sans-serif;
+  font-size: clamp(36px, 3.3vw, 46px);
+  font-weight: 620;
+  letter-spacing: -0.045em;
+  line-height: 1.05;
+}
+
+.auth-heading p {
+  max-width: 440px;
+  margin: 14px 0 34px;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.auth-heading p strong {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field-stack {
+  display: grid;
+  gap: 20px;
+}
+
+.field-group label {
+  color: #363636;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.input-shell {
+  display: flex;
+  height: 58px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: #979797;
+  background: var(--surface);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.input-shell:focus-within {
+  border-color: var(--brand-orange);
+  box-shadow: 0 0 0 3px rgba(255, 94, 43, 0.12);
+}
+
+.input-shell--error {
+  border-color: var(--error);
+}
+
+.input-shell--error:focus-within {
+  border-color: var(--error);
+  box-shadow: 0 0 0 3px rgba(179, 4, 17, 0.1);
+}
+
+.input-shell input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: var(--ink);
+  background: transparent;
+  font-size: 15px;
+}
+
+.input-shell input::placeholder {
+  color: #aaa;
+}
+
+.password-toggle {
+  display: grid;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  margin-right: -9px;
+  place-items: center;
+  border-radius: 8px;
+  color: #888;
+  background: transparent;
+  cursor: pointer;
+}
+
+.password-toggle:hover {
+  color: var(--ink);
+  background: #f5f5f5;
+}
+
+.password-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
+.form-error {
+  margin: 13px 0 0;
+  color: var(--error);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.primary-button {
+  display: flex;
+  width: 100%;
+  min-height: 56px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 28px;
+  padding: 14px 20px;
+  border-radius: 12px;
+  color: #fff;
+  background: var(--brand-orange);
+  box-shadow: 0 14px 30px -14px rgba(255, 94, 43, 0.68);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.primary-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: var(--brand-orange-hover);
+  box-shadow: 0 18px 34px -15px rgba(233, 77, 27, 0.72);
+}
+
+.primary-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.primary-button:disabled {
+  color: #a3a3a3;
+  background: #e8e8e8;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.primary-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+.form-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 18px;
+  gap: 18px;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #555;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.checkbox input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.checkbox__box {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 1px solid #d0d0d0;
+  border-radius: 5px;
+  color: transparent;
+  background: #fff;
+  transition: 160ms ease;
+}
+
+.checkbox__box svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2.5;
+}
+
+.checkbox input:checked + .checkbox__box {
+  border-color: var(--brand-orange);
+  color: #fff;
+  background: var(--brand-orange);
+}
+
+.checkbox input:focus-visible + .checkbox__box {
+  box-shadow: 0 0 0 3px rgba(255, 94, 43, 0.14);
+}
+
+.forgot-link {
+  padding: 5px 0;
+  color: #383838;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.forgot-link:hover {
+  color: var(--brand-orange-hover);
+}
+
+.form-panel__footer {
+  display: flex;
+  justify-content: space-between;
+  padding: 24px clamp(34px, 4.2vw, 64px);
+  color: #aaa;
+  font-size: 10px;
+}
+
+.panel-placeholder {
+  min-height: 100svh;
+  padding: 34px clamp(24px, 5vw, 72px);
+  background:
+    radial-gradient(circle at 100% 0, rgba(255, 94, 43, 0.11), transparent 32%),
+    var(--canvas);
+}
+
+.panel-placeholder > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.panel-placeholder > section {
+  width: min(580px, 100%);
+  margin: clamp(110px, 22vh, 220px) auto 0;
+  text-align: center;
+}
+
+.panel-placeholder h1 {
+  margin: 0;
+  font-family: "Urbanist Variable", Urbanist, sans-serif;
+  font-size: clamp(42px, 6vw, 68px);
+  font-weight: 630;
+  letter-spacing: -0.052em;
+  line-height: 1;
+}
+
+.panel-placeholder section > p:last-child {
+  margin: 20px auto 0;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.panel-placeholder strong {
+  color: var(--ink);
+}
+
+.panel-placeholder__icon {
+  display: grid;
+  width: 62px;
+  height: 62px;
+  margin: 0 auto 28px;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--success);
+  box-shadow: 0 0 0 10px rgba(104, 165, 109, 0.1);
+}
+
+.logout-button {
+  min-height: 42px;
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--ink);
+  background: #fff;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.logout-button:hover:not(:disabled) {
+  border-color: #c9c9c9;
+  background: #fafafa;
+}
+
+.logout-button:disabled {
+  color: #999;
+  cursor: wait;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid rgba(255, 94, 43, 0.3);
+  outline-offset: 3px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 1100px) {
+  .login-shell {
+    grid-template-columns: minmax(360px, 40%) minmax(0, 60%);
+  }
+
+  .brand-panel__content {
+    padding-inline: 36px;
+  }
+
+  .brand-copy h1 {
+    font-size: 44px;
+  }
+
+  .brand-panel__image {
+    object-position: 53% center;
+  }
+}
+
+@media (max-width: 820px) {
+  .login-shell {
+    display: block;
+    min-height: 100svh;
+  }
+
+  .brand-panel {
+    display: none;
+  }
+
+  .form-panel {
+    min-height: 100svh;
+    background:
+      radial-gradient(circle at 100% 0, rgba(255, 94, 43, 0.1), transparent 30%),
+      var(--canvas);
+  }
+
+  .mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 28px 24px;
+  }
+
+  .mobile-header > span {
+    color: #8b8b8b;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
+  .form-panel__top {
+    display: none;
+  }
+
+  .auth-card {
+    padding: 60px 0;
+  }
+
+  .form-panel__footer {
+    padding-inline: 24px;
+  }
+}
+
+@media (max-width: 520px) {
+  .mobile-header {
+    padding-top: 22px;
+  }
+
+  .wordmark {
+    font-size: 25px;
+  }
+
+  .auth-card {
+    width: min(100% - 36px, 460px);
+    padding-top: 30px;
+  }
+
+  .auth-heading h2 {
+    font-size: 36px;
+  }
+
+  .auth-heading p {
+    margin-bottom: 30px;
+    font-size: 14px;
+  }
+
+  .form-panel__footer {
+    gap: 16px;
+    padding-inline: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
