@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   CheckIcon,
   ChevronRightIcon,
@@ -38,6 +38,8 @@ type ApiResponse = {
   error?: string;
   results?: unknown;
   groups?: unknown;
+  templates?: unknown;
+  template?: unknown;
 };
 
 function responseMessage(data: ApiResponse) {
@@ -84,6 +86,9 @@ export function MdmMessaging() {
   const [groups, setGroups] = useState<DeviceGroup[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState("");
   const [message, setMessage] = useState("");
+  const [templates, setTemplates] = useState<string[]>([]);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -94,6 +99,43 @@ export function MdmMessaging() {
     (device) => device.found && selected.has(device.device_id),
   );
   const selectedGroup = groups.find((group) => group.id === Number(selectedGroupId));
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadTemplates() {
+      try {
+        const response = await fetch("/api/mdm/message-templates", {
+          method: "GET",
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const data = (await response.json()) as ApiResponse;
+        if (
+          !response.ok ||
+          data.status !== "success" ||
+          !Array.isArray(data.templates) ||
+          !data.templates.every(
+            (template) => typeof template === "string" && template.length <= 1000,
+          )
+        ) {
+          throw new Error(responseMessage(data));
+        }
+        setTemplates(data.templates);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        setNotice({
+          tone: "error",
+          text: error instanceof Error ? error.message : "No se pudieron cargar las plantillas.",
+        });
+      } finally {
+        if (!controller.signal.aborted) setIsLoadingTemplates(false);
+      }
+    }
+
+    void loadTemplates();
+    return () => controller.abort();
+  }, []);
 
   function handleIdentifierChange(value: string) {
     setInput(value);
@@ -198,6 +240,56 @@ export function MdmMessaging() {
       });
     } finally {
       setIsLoadingGroups(false);
+    }
+  }
+
+  function handleTemplateChange(value: string) {
+    if (!value) return;
+    setMessage(value);
+    setNotice(null);
+  }
+
+  async function handleSaveTemplate() {
+    const cleanMessage = message.trim();
+    if (!cleanMessage) {
+      setNotice({
+        tone: "error",
+        text: "Escribí un mensaje antes de guardarlo como plantilla.",
+      });
+      return;
+    }
+    if (templates.includes(cleanMessage)) {
+      setNotice({
+        tone: "error",
+        text: "Ese mensaje ya está guardado como plantilla.",
+      });
+      return;
+    }
+
+    setIsSavingTemplate(true);
+    setNotice(null);
+    try {
+      const response = await fetch("/api/mdm/message-templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: cleanMessage }),
+      });
+      const data = (await response.json()) as ApiResponse;
+      if (!response.ok || data.status !== "success" || typeof data.template !== "string") {
+        throw new Error(responseMessage(data));
+      }
+      const savedTemplate = data.template;
+      setTemplates((current) =>
+        current.includes(savedTemplate) ? current : [...current, savedTemplate],
+      );
+      setNotice({ tone: "success", text: "Plantilla guardada en el servidor." });
+    } catch (error) {
+      setNotice({
+        tone: "error",
+        text: error instanceof Error ? error.message : "No se pudo guardar la plantilla.",
+      });
+    } finally {
+      setIsSavingTemplate(false);
     }
   }
 
@@ -483,6 +575,35 @@ export function MdmMessaging() {
                         : "El aviso aparecerá en todos los dispositivos seleccionados."}
                   </small>
                 </div>
+              </div>
+
+              <div className={styles.templateControls}>
+                <label>
+                  <span>Plantilla</span>
+                  <select
+                    defaultValue=""
+                    onChange={(event) => handleTemplateChange(event.target.value)}
+                    disabled={isLoadingTemplates || templates.length === 0 || isSending}
+                  >
+                    <option value="">
+                      {isLoadingTemplates
+                        ? "Cargando plantillas…"
+                        : templates.length === 0
+                          ? "Sin plantillas disponibles"
+                          : "Seleccionar plantilla"}
+                    </option>
+                    {templates.map((template) => (
+                      <option key={template} value={template}>{template}</option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => void handleSaveTemplate()}
+                  disabled={isSavingTemplate || isSending}
+                >
+                  {isSavingTemplate ? "Guardando…" : "Guardar como plantilla"}
+                </button>
               </div>
 
               <label className={styles.messageField}>

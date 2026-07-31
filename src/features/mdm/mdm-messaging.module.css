@@ -336,7 +336,48 @@
   border-top: 1px solid #eee;
 }
 
-.messageField { display: grid; gap: 8px; margin-top: 17px; }
+.templateControls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 9px;
+  margin-top: 17px;
+}
+
+.templateControls label { display: grid; gap: 7px; }
+.templateControls label > span { color: #4a4a4a; font-size: 9px; font-weight: 700; }
+.templateControls select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid #dcdcdc;
+  border-radius: 9px;
+  outline: 0;
+  color: #333;
+  background: #fff;
+  font: inherit;
+  font-size: 10px;
+}
+.templateControls select:focus {
+  border-color: var(--brand-orange);
+  box-shadow: 0 0 0 3px rgba(255, 94, 43, 0.1);
+}
+.templateControls button {
+  min-height: 42px;
+  padding: 10px 15px;
+  border: 0;
+  border-radius: 9px;
+  color: #fff;
+  background: #1d1d1d;
+  font-size: 9px;
+  font-weight: 720;
+  cursor: pointer;
+}
+.templateControls button:hover:not(:disabled) { background: #333; }
+.templateControls button:disabled,
+.templateControls select:disabled { cursor: not-allowed; opacity: 0.6; }
+
+.messageField { display: grid; gap: 8px; margin-top: 13px; }
 .messageField > span { color: #4a4a4a; font-size: 9px; font-weight: 700; }
 
 .messageField textarea {
@@ -445,6 +486,7 @@
   .cardBody { padding: 20px; }
   .targetModes { grid-template-columns: 1fr; }
   .deviceSearch { grid-template-columns: 1fr; }
+  .templateControls { grid-template-columns: 1fr; }
   .deviceSearch button { min-height: 44px; }
   .deviceCard { grid-template-columns: auto auto 1fr; }
   .deviceCard dl { grid-column: 1 / -1; justify-content: flex-start; padding-top: 5px; }
