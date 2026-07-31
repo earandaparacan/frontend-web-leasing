@@ -1,7 +1,9 @@
 import { forwardMdmRequest, getMdmMessageUrl } from "@/lib/mdm-backend";
 
 type MessagePayload = {
-  device_number?: unknown;
+  scope?: unknown;
+  group_id?: unknown;
+  devices?: unknown;
   message?: unknown;
 };
 
@@ -18,17 +20,6 @@ export async function POST(request: Request) {
   }
 
   if (
-    typeof payload.device_number !== "string" ||
-    payload.device_number.trim().length === 0 ||
-    payload.device_number.trim().length > 128
-  ) {
-    return Response.json(
-      { status: "error", message: "Seleccioná un dispositivo válido." },
-      { status: 400 },
-    );
-  }
-
-  if (
     typeof payload.message !== "string" ||
     payload.message.trim().length === 0 ||
     payload.message.trim().length > 1000
@@ -39,8 +30,61 @@ export async function POST(request: Request) {
     );
   }
 
+  if (payload.scope === "all") {
+    return forwardMdmRequest(
+      getMdmMessageUrl(),
+      {
+        scope: "all",
+        message: payload.message.trim(),
+      },
+      55_000,
+    );
+  }
+
+  if (payload.scope === "group") {
+    if (
+      typeof payload.group_id !== "number" ||
+      !Number.isSafeInteger(payload.group_id) ||
+      payload.group_id <= 0
+    ) {
+      return Response.json(
+        { status: "error", message: "Seleccioná un grupo válido." },
+        { status: 400 },
+      );
+    }
+    return forwardMdmRequest(
+      getMdmMessageUrl(),
+      {
+        scope: "group",
+        group_id: payload.group_id,
+        message: payload.message.trim(),
+      },
+      55_000,
+    );
+  }
+
+  if (
+    payload.scope !== "devices" ||
+    !Array.isArray(payload.devices) ||
+    payload.devices.length === 0 ||
+    payload.devices.length > 100 ||
+    !payload.devices.every(
+      (device) =>
+        typeof device === "string" &&
+        device.trim().length > 0 &&
+        device.trim().length <= 128,
+    )
+  ) {
+    return Response.json(
+      { status: "error", message: "Seleccioná entre 1 y 100 dispositivos válidos." },
+      { status: 400 },
+    );
+  }
+
+  const devices = [...new Set(payload.devices.map((device) => device.trim()))];
   return forwardMdmRequest(getMdmMessageUrl(), {
-    device_number: payload.device_number.trim(),
+    scope: "devices",
+    devices,
     message: payload.message.trim(),
   });
 }

@@ -3,6 +3,7 @@ import { getBackendUrl, readBackendJson } from "@/lib/backend";
 
 const DEFAULT_QUERY_PATH = "/api/v1/mdm/devices/query";
 const DEFAULT_ACTION_PATH = "/api/v1/mdm/devices/action";
+const DEFAULT_GROUPS_PATH = "/api/v1/mdm/groups";
 const DEFAULT_MESSAGE_PATH = "/api/v1/mdm/messages";
 const LEGACY_QUERY_PATH = "/api/query";
 const LEGACY_ACTION_PATH = "/api/action";
@@ -31,7 +32,16 @@ export function getMdmMessageUrl() {
   return getBackendUrl(DEFAULT_MESSAGE_PATH);
 }
 
-export async function forwardMdmRequest(url: string, body: unknown) {
+export function getMdmGroupsUrl() {
+  return getBackendUrl(DEFAULT_GROUPS_PATH);
+}
+
+export async function forwardMdmRequest(
+  url: string,
+  body: unknown = undefined,
+  timeoutMilliseconds = 30_000,
+  method: "GET" | "POST" = "POST",
+) {
   const cookieStore = await cookies();
   const session = cookieStore.get("teklease_staff_session")?.value;
   const csrf = cookieStore.get("teklease_staff_csrf")?.value;
@@ -51,16 +61,16 @@ export async function forwardMdmRequest(url: string, body: unknown) {
         ? `Basic ${Buffer.from(`${mdmUser}:${mdmPassword}`, "utf8").toString("base64")}`
         : undefined;
     const backendResponse = await fetch(url, {
-      method: "POST",
+      method,
       headers: {
         "Content-Type": "application/json",
         Cookie: `sessionid=${session}${csrf ? `; csrftoken=${csrf}` : ""}`,
         ...(csrf ? { "X-CSRFToken": csrf } : {}),
         ...(basicAuthorization ? { Authorization: basicAuthorization } : {}),
       },
-      body: JSON.stringify(body),
+      body: body === undefined ? undefined : JSON.stringify(body),
       cache: "no-store",
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(timeoutMilliseconds),
     });
     const data = await readBackendJson(backendResponse);
 
