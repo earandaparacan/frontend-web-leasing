@@ -1,0 +1,18 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: teklease-web:local
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    environment:
+      BACKEND_URL: "${DOCKER_BACKEND_URL:-http://host.docker.internal:8000}"
+      MDM_BACKEND_URL: "${MDM_BACKEND_URL:-}"
+      MDM_QUERY_PATH: "${MDM_QUERY_PATH:-}"
+      MDM_ACTION_PATH: "${MDM_ACTION_PATH:-}"
+      MDM_BACKEND_USER: "${MDM_BACKEND_USER:-}"
+      MDM_BACKEND_PASSWORD: "${MDM_BACKEND_PASSWORD:-}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
