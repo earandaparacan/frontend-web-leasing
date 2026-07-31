@@ -9,6 +9,7 @@ import {
   DeviceIcon,
   KeyIcon,
   MenuIcon,
+  MessageIcon,
   ReceiptIcon,
   ShieldIcon,
   UsersIcon,
@@ -20,6 +21,7 @@ import styles from "./workspace-navigation.module.css";
 const navigation = [
   { href: "/panel", label: "Dashboard", icon: DashboardIcon, exact: true },
   { href: "/panel/dispositivos", label: "Lock / Unlock", icon: DeviceIcon, exact: false },
+  { href: "/panel/mensajeria", label: "Mensajería MDM", icon: MessageIcon, exact: false },
   { href: "/panel/desafios-otp", label: "Desafíos OTP", icon: KeyIcon, exact: false },
   { href: "/panel/usuarios", label: "Usuarios", icon: UsersIcon, exact: false },
   { href: "/panel/pagopar", label: "Pagopar transactions", icon: ReceiptIcon, exact: false },

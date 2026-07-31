@@ -3,6 +3,7 @@ import { getBackendUrl, readBackendJson } from "@/lib/backend";
 
 const DEFAULT_QUERY_PATH = "/api/v1/mdm/devices/query";
 const DEFAULT_ACTION_PATH = "/api/v1/mdm/devices/action";
+const DEFAULT_MESSAGE_PATH = "/api/v1/mdm/messages";
 const LEGACY_QUERY_PATH = "/api/query";
 const LEGACY_ACTION_PATH = "/api/action";
 
@@ -24,6 +25,10 @@ export function getMdmQueryUrl() {
 export function getMdmActionUrl() {
   const fallback = process.env.MDM_BACKEND_URL ? LEGACY_ACTION_PATH : DEFAULT_ACTION_PATH;
   return getMdmBackendUrl(configuredPath(process.env.MDM_ACTION_PATH, fallback));
+}
+
+export function getMdmMessageUrl() {
+  return getBackendUrl(DEFAULT_MESSAGE_PATH);
 }
 
 export async function forwardMdmRequest(url: string, body: unknown) {

@@ -4,6 +4,7 @@ import {
   ChevronRightIcon,
   DeviceIcon,
   KeyIcon,
+  MessageIcon,
   ReceiptIcon,
   UsersIcon,
 } from "@/components/icons";
@@ -23,6 +24,14 @@ const modules = [
     status: "Operativo",
     tone: "orange",
     icon: DeviceIcon,
+  },
+  {
+    href: "/panel/mensajeria",
+    label: "Mensajería MDM",
+    description: "Enviá avisos directamente a dispositivos registrados en Headwind MDM.",
+    status: "Canal seguro",
+    tone: "purple",
+    icon: MessageIcon,
   },
   {
     href: "/panel/desafios-otp",
