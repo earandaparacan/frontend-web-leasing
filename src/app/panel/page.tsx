@@ -1,87 +1,134 @@
-import { cookies } from "next/headers";
-import Link from "next/link";
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
-import { DeviceManagement } from "@/features/mdm/device-management";
-import { LogoutButton } from "@/features/auth/logout-button";
-import { getBackendUrl } from "@/lib/backend";
-
-type StaffUser = {
-  username: string;
-  groups: string[];
-};
+import Link from "next/link";
+import {
+  ChevronRightIcon,
+  DeviceIcon,
+  KeyIcon,
+  ReceiptIcon,
+  UsersIcon,
+} from "@/components/icons";
+import { getStaffUser } from "@/lib/staff-session";
+import styles from "./panel.module.css";
 
 export const metadata: Metadata = {
-  title: "Control de equipos | Teklease",
-  description: "Consulta, bloqueo y desbloqueo seguro de equipos Teklease.",
+  title: "Dashboard | Teklease",
+  description: "Resumen operativo del portal administrativo de Teklease.",
 };
 
+const modules = [
+  {
+    href: "/panel/dispositivos",
+    label: "Control de equipos",
+    description: "Consultá dispositivos y ejecutá acciones de bloqueo o desbloqueo.",
+    status: "Operativo",
+    tone: "orange",
+    icon: DeviceIcon,
+  },
+  {
+    href: "/panel/desafios-otp",
+    label: "Desafíos OTP",
+    description: "Supervisá validaciones, estados y vencimientos de seguridad.",
+    status: "Módulo listo",
+    tone: "purple",
+    icon: KeyIcon,
+  },
+  {
+    href: "/panel/usuarios",
+    label: "Usuarios",
+    description: "Administrá usuarios, acceso y estado de sus cuentas.",
+    status: "Módulo listo",
+    tone: "blue",
+    icon: UsersIcon,
+  },
+  {
+    href: "/panel/pagopar",
+    label: "Transacciones Pagopar",
+    description: "Consultá pagos, referencias y el resultado de cada operación.",
+    status: "Módulo listo",
+    tone: "green",
+    icon: ReceiptIcon,
+  },
+] as const;
+
 export default async function PanelPage() {
-  const cookieStore = await cookies();
-  const session = cookieStore.get("teklease_staff_session")?.value;
-
-  if (!session) {
-    redirect("/");
-  }
-
-  let user: StaffUser | undefined;
-
-  try {
-    const response = await fetch(getBackendUrl("/api/v1/me"), {
-      headers: { Cookie: `sessionid=${session}` },
-      cache: "no-store",
-      signal: AbortSignal.timeout(15_000),
-    });
-    const data = (await response.json()) as {
-      user?: { username: string; user_type: string; groups: string[] };
-    };
-    const allowedGroups = new Set([
-      "Atención al cliente",
-      "Cobranzas",
-      "Gerencia",
-      "Soporte técnico",
-    ]);
-
-    if (
-      !response.ok ||
-      data.user?.user_type !== "staff" ||
-      !data.user.groups.some((group) => allowedGroups.has(group))
-    ) {
-      redirect("/");
-    }
-
-    user = data.user;
-  } catch {
-    redirect("/");
-  }
+  const user = await getStaffUser();
 
   return (
-    <main className="workspace-shell">
-      <header className="workspace-header">
-        <div className="workspace-header__identity">
-          <Link className="wordmark" href="/panel" aria-label="Teklease, panel">
-            teklease<span>.</span>
-          </Link>
-          <span className="workspace-header__divider" aria-hidden="true" />
+    <div className={styles.page}>
+      <section className={styles.welcome}>
+        <div>
+          <span className={styles.eyebrow}>Resumen general</span>
+          <h1>Hola, {user.username}</h1>
+          <p>Todo lo que necesitás para operar Teklease, en un solo lugar.</p>
+        </div>
+        <div className={styles.status}>
+          <span />
           <div>
-            <span className="workspace-header__area">Operaciones</span>
-            <strong>Control de equipos</strong>
+            <strong>Sesión segura</strong>
+            <small>Acceso interno verificado</small>
           </div>
         </div>
+      </section>
 
-        <div className="workspace-header__session">
-          <div className="workspace-header__user">
-            <span>{user.username.slice(0, 1).toUpperCase()}</span>
+      <section aria-labelledby="modules-heading">
+        <div className={styles.sectionHeading}>
+          <div>
+            <span>OPERACIONES</span>
+            <h2 id="modules-heading">Módulos del portal</h2>
+          </div>
+          <p>Seleccioná un módulo para comenzar.</p>
+        </div>
+
+        <div className={styles.moduleGrid}>
+          {modules.map((module) => {
+            const Icon = module.icon;
+            return (
+              <Link className={styles.moduleCard} href={module.href} key={module.href}>
+                <div className={`${styles.moduleIcon} ${styles[`moduleIcon--${module.tone}`]}`}>
+                  <Icon />
+                </div>
+                <span className={styles.moduleStatus}>
+                  <i /> {module.status}
+                </span>
+                <h3>{module.label}</h3>
+                <p>{module.description}</p>
+                <span className={styles.moduleLink}>
+                  Abrir módulo <ChevronRightIcon />
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className={styles.bottomGrid}>
+        <article className={styles.activityCard}>
+          <div className={styles.cardHeading}>
             <div>
-              <strong>{user.username}</strong>
-              <small>{user.groups[0]}</small>
+              <span>ACTIVIDAD</span>
+              <h2>Últimos movimientos</h2>
             </div>
+            <span className={styles.neutralBadge}>Sincronización pendiente</span>
           </div>
-          <LogoutButton />
-        </div>
-      </header>
+          <div className={styles.emptyState}>
+            <span className={styles.emptyMark}><i /><i /><i /></span>
+            <strong>Todavía no hay actividad para mostrar</strong>
+            <p>Los movimientos aparecerán cuando los módulos de datos estén conectados.</p>
+          </div>
+        </article>
 
-      <DeviceManagement />
-    </main>
+        <aside className={styles.helpCard}>
+          <span className={styles.helpKicker}>ACCESO RÁPIDO</span>
+          <h2>Gestión de dispositivos</h2>
+          <p>Buscá equipos por IMEI o Device ID y gestioná su estado desde el módulo MDM.</p>
+          <Link href="/panel/dispositivos">
+            Ir a control de equipos <ChevronRightIcon />
+          </Link>
+          <div className={styles.helpDecoration} aria-hidden="true">
+            <DeviceIcon />
+          </div>
+        </aside>
+      </section>
+    </div>
   );
 }

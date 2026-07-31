@@ -1,0 +1,389 @@
+.page {
+  width: min(1280px, calc(100% - 64px));
+  margin: 0 auto;
+  padding: 54px 0 70px;
+}
+
+.welcome {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 30px;
+  margin-bottom: 48px;
+}
+
+.eyebrow,
+.sectionHeading span,
+.cardHeading span,
+.helpKicker {
+  color: var(--brand-orange);
+  font-size: 9px;
+  font-weight: 760;
+  letter-spacing: 0.13em;
+}
+
+.welcome h1 {
+  margin: 8px 0 8px;
+  font-family: "Urbanist Variable", Urbanist, sans-serif;
+  font-size: clamp(40px, 4.8vw, 60px);
+  font-weight: 630;
+  letter-spacing: -0.052em;
+  line-height: 0.98;
+}
+
+.welcome p,
+.sectionHeading p {
+  margin: 0;
+  color: #858585;
+  font-size: 13px;
+}
+
+.status {
+  display: flex;
+  min-width: 215px;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 17px;
+  border: 1px solid #e5e5e5;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.status > span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 0 5px rgba(104, 165, 109, 0.12);
+}
+
+.status div {
+  display: grid;
+  gap: 2px;
+}
+
+.status strong {
+  font-size: 10px;
+}
+
+.status small {
+  color: #9b9b9b;
+  font-size: 8px;
+}
+
+.sectionHeading,
+.cardHeading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.sectionHeading h2,
+.cardHeading h2,
+.helpCard h2 {
+  margin: 6px 0 0;
+  font-family: "Urbanist Variable", Urbanist, sans-serif;
+  font-size: 23px;
+  font-weight: 660;
+  letter-spacing: -0.032em;
+}
+
+.moduleGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.moduleCard {
+  position: relative;
+  min-height: 236px;
+  padding: 22px;
+  overflow: hidden;
+  border: 1px solid #e5e5e5;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 15px 36px -34px rgba(0, 0, 0, 0.48);
+  text-decoration: none;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.moduleCard:hover {
+  transform: translateY(-3px);
+  border-color: #d5d5d5;
+  box-shadow: 0 22px 40px -30px rgba(0, 0, 0, 0.32);
+}
+
+.moduleIcon {
+  display: grid;
+  width: 43px;
+  height: 43px;
+  margin-bottom: 24px;
+  place-items: center;
+  border-radius: 12px;
+}
+
+.moduleIcon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.moduleIcon--orange {
+  color: #e65022;
+  background: #fff0eb;
+}
+
+.moduleIcon--purple {
+  color: #735ca8;
+  background: #f0ecf8;
+}
+
+.moduleIcon--blue {
+  color: #517b9f;
+  background: #ebf2f7;
+}
+
+.moduleIcon--green {
+  color: #5f9364;
+  background: #edf5ee;
+}
+
+.moduleStatus {
+  position: absolute;
+  top: 24px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #8b8b8b;
+  font-size: 8px;
+  font-weight: 650;
+}
+
+.moduleStatus i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--success);
+}
+
+.moduleCard h3 {
+  margin: 0 0 9px;
+  font-family: "Urbanist Variable", Urbanist, sans-serif;
+  font-size: 18px;
+  font-weight: 670;
+  letter-spacing: -0.02em;
+}
+
+.moduleCard p {
+  min-height: 47px;
+  margin: 0;
+  color: #8a8a8a;
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.moduleLink {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 17px;
+  color: #3f3f3f;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.moduleLink svg,
+.helpCard a svg {
+  width: 13px;
+  height: 13px;
+  transition: transform 150ms ease;
+}
+
+.moduleCard:hover .moduleLink svg,
+.helpCard a:hover svg {
+  transform: translateX(3px);
+}
+
+.bottomGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(300px, 0.75fr);
+  gap: 16px;
+  margin-top: 36px;
+}
+
+.activityCard,
+.helpCard {
+  min-height: 260px;
+  border-radius: 17px;
+}
+
+.activityCard {
+  padding: 24px;
+  border: 1px solid #e4e4e4;
+  background: #fff;
+}
+
+.neutralBadge {
+  padding: 7px 10px;
+  border-radius: 999px;
+  color: #8c8c8c !important;
+  background: #f3f3f3;
+  font-size: 8px !important;
+  letter-spacing: 0 !important;
+}
+
+.emptyState {
+  display: grid;
+  min-height: 165px;
+  place-items: center;
+  align-content: center;
+  text-align: center;
+}
+
+.emptyMark {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 13px;
+}
+
+.emptyMark i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #dedede;
+}
+
+.emptyMark i:nth-child(2) {
+  background: #c9c9c9;
+}
+
+.emptyState strong {
+  font-size: 10px;
+}
+
+.emptyState p {
+  max-width: 370px;
+  margin: 7px 0 0;
+  color: #a0a0a0;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.helpCard {
+  position: relative;
+  padding: 27px;
+  overflow: hidden;
+  color: #fff;
+  background: #171717;
+}
+
+.helpKicker {
+  color: #777;
+}
+
+.helpCard h2 {
+  margin-top: 11px;
+  font-size: 25px;
+}
+
+.helpCard p {
+  position: relative;
+  z-index: 1;
+  max-width: 290px;
+  margin: 12px 0 24px;
+  color: #8b8b8b;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.helpCard a {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: 5px;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.helpDecoration {
+  position: absolute;
+  right: -32px;
+  bottom: -38px;
+  display: grid;
+  width: 156px;
+  height: 156px;
+  place-items: center;
+  border: 1px solid #292929;
+  border-radius: 50%;
+  color: rgba(255, 94, 43, 0.16);
+  background: #1c1c1c;
+}
+
+.helpDecoration svg {
+  width: 76px;
+  height: 76px;
+}
+
+@media (max-width: 1150px) {
+  .moduleGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .page {
+    width: min(100% - 40px, 1280px);
+    padding-top: 38px;
+  }
+}
+
+@media (max-width: 700px) {
+  .welcome,
+  .sectionHeading {
+    align-items: flex-start;
+  }
+
+  .welcome {
+    display: grid;
+    margin-bottom: 38px;
+  }
+
+  .status {
+    min-width: 0;
+    width: fit-content;
+  }
+
+  .sectionHeading {
+    display: grid;
+  }
+
+  .moduleGrid,
+  .bottomGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .moduleCard {
+    min-height: 220px;
+  }
+}
+
+@media (max-width: 460px) {
+  .page {
+    width: min(100% - 28px, 1280px);
+    padding: 30px 0 48px;
+  }
+
+  .moduleGrid {
+    gap: 10px;
+  }
+
+  .cardHeading {
+    align-items: flex-start;
+  }
+}
