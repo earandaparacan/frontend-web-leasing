@@ -1,7 +1,13 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { CheckIcon, LockIcon, ShieldIcon } from "@/components/icons";
+import {
+  isTerminalMdmDeviceActionJob,
+  mdmDeviceActionJobLabel,
+  parseMdmDeviceActionJob,
+  type MdmDeviceActionJob,
+} from "./mdm-device-action-job";
 import styles from "./device-management.module.css";
 
 type Device = {
@@ -30,17 +36,16 @@ type QueryResponse = {
   error?: string;
 };
 
-type ActionResult = {
-  device_id: string;
-  success: boolean;
-  message: string;
-};
-
-type ActionResponse = {
+type ActionJobResponse = {
   status?: string;
-  results?: unknown;
+  job?: unknown;
   message?: string;
   error?: string;
+};
+
+type CapabilitiesResponse = {
+  status?: string;
+  capabilities?: unknown;
 };
 
 type TemplateResponse = {
@@ -80,16 +85,6 @@ function isDevice(value: unknown): value is Device {
   );
 }
 
-function isActionResult(value: unknown): value is ActionResult {
-  if (typeof value !== "object" || value === null) return false;
-  const result = value as Record<string, unknown>;
-  return (
-    typeof result.device_id === "string" &&
-    typeof result.success === "boolean" &&
-    typeof result.message === "string"
-  );
-}
-
 function parseIdentifiers(value: string) {
   return [...new Set(value.split(/[\r\n,;\t]+/).map((item) => item.trim()).filter(Boolean))];
 }
@@ -116,6 +111,8 @@ function statusLabel(status?: string | null) {
   return labels[status.toUpperCase()] ?? "Revisar";
 }
 
+const ACTIVE_ACTION_JOB_KEY = "teklease-active-mdm-device-action-job";
+
 export function DeviceManagement() {
   const [input, setInput] = useState("");
   const [devices, setDevices] = useState<Device[]>([]);
@@ -127,6 +124,12 @@ export function DeviceManagement() {
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const [isQuerying, setIsQuerying] = useState(false);
   const [pendingAction, setPendingAction] = useState<"lock" | "unlock" | null>(null);
+  const [activeJobId, setActiveJobId] = useState("");
+  const [activeJob, setActiveJob] = useState<MdmDeviceActionJob | null>(null);
+  const [isRetryingJob, setIsRetryingJob] = useState(false);
+  const [maxSpecificDevices, setMaxSpecificDevices] = useState(1000);
+  const [queryBatchSize, setQueryBatchSize] = useState(20);
+  const idempotencyKeyRef = useRef("");
   const [notice, setNotice] = useState("");
   const [logs, setLogs] = useState<LogEntry[]>([
     {
@@ -147,6 +150,8 @@ export function DeviceManagement() {
       .some((value) => value?.toLowerCase().includes(term));
   });
   const selectedDevices = foundDevices.filter((device) => selected.has(device.device_id));
+  const hasTargets = selectedDevices.length > 0;
+  const actionInProgress = Boolean(activeJob && !isTerminalMdmDeviceActionJob(activeJob));
   const allVisibleSelected =
     visibleDevices.some((device) => device.found) &&
     visibleDevices.filter((device) => device.found).every((device) => selected.has(device.device_id));
@@ -187,6 +192,89 @@ export function DeviceManagement() {
     return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    const storedJobId = window.localStorage.getItem(ACTIVE_ACTION_JOB_KEY);
+    const restoreTimer = storedJobId
+      ? window.setTimeout(() => setActiveJobId(storedJobId), 0)
+      : undefined;
+
+    const controller = new AbortController();
+    async function loadCapabilities() {
+      try {
+        const response = await fetch("/api/mdm/capabilities", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const data = (await response.json()) as CapabilitiesResponse;
+        if (!response.ok || data.status !== "success" || !data.capabilities) return;
+        const capabilities = data.capabilities as Record<string, unknown>;
+        if (
+          typeof capabilities.max_specific_devices === "number" &&
+          Number.isSafeInteger(capabilities.max_specific_devices) &&
+          capabilities.max_specific_devices > 0
+        ) {
+          setMaxSpecificDevices(capabilities.max_specific_devices);
+        }
+        if (
+          typeof capabilities.query_batch_size === "number" &&
+          Number.isSafeInteger(capabilities.query_batch_size) &&
+          capabilities.query_batch_size > 0
+        ) {
+          setQueryBatchSize(capabilities.query_batch_size);
+        }
+      } catch {
+        // Los límites seguros por defecto permiten continuar si falla esta consulta auxiliar.
+      }
+    }
+
+    void loadCapabilities();
+    return () => {
+      controller.abort();
+      if (restoreTimer !== undefined) window.clearTimeout(restoreTimer);
+    };
+  }, []);
+
+  const activeJobTerminal = activeJob ? isTerminalMdmDeviceActionJob(activeJob) : false;
+  useEffect(() => {
+    if (!activeJobId || activeJobTerminal) return;
+
+    const controller = new AbortController();
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    async function pollJob() {
+      try {
+        const response = await fetch(`/api/mdm/action-jobs/${encodeURIComponent(activeJobId)}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const data = (await response.json()) as ActionJobResponse;
+        const job = parseMdmDeviceActionJob(data.job);
+        if (!response.ok || data.status !== "success" || !job) {
+          throw new Error(responseMessage(data));
+        }
+        setActiveJob(job);
+        if (isTerminalMdmDeviceActionJob(job)) {
+          window.localStorage.removeItem(ACTIVE_ACTION_JOB_KEY);
+          setNotice(
+            job.status === "SUCCEEDED"
+              ? `La acción terminó correctamente en ${job.succeeded} dispositivo(s).`
+              : `La acción terminó con ${job.failed} dispositivo(s) fallido(s).`,
+          );
+          return;
+        }
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        setNotice(error instanceof Error ? error.message : "No se pudo consultar la acción.");
+      }
+      timeoutId = setTimeout(pollJob, 2000);
+    }
+
+    void pollJob();
+    return () => {
+      controller.abort();
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [activeJobId, activeJobTerminal]);
+
   function addLog(messageText: string, tone: LogEntry["tone"] = "info") {
     setLogs((current) => [
       ...current,
@@ -205,8 +293,8 @@ export function DeviceManagement() {
       return;
     }
 
-    if (deviceIdentifiers.length > 100) {
-      setNotice("Podés consultar hasta 100 dispositivos por vez.");
+    if (deviceIdentifiers.length > maxSpecificDevices) {
+      setNotice(`Podés consultar hasta ${maxSpecificDevices} dispositivos por vez.`);
       return;
     }
 
@@ -215,20 +303,24 @@ export function DeviceManagement() {
     addLog(`Consultando ${deviceIdentifiers.length} dispositivo(s)…`);
 
     try {
-      const response = await fetch("/api/mdm/devices/query", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ devices: deviceIdentifiers }),
-      });
-      const data = (await response.json()) as QueryResponse;
+      const validResults: Device[] = [];
+      for (let index = 0; index < deviceIdentifiers.length; index += queryBatchSize) {
+        const batch = deviceIdentifiers.slice(index, index + queryBatchSize);
+        const response = await fetch("/api/mdm/devices/query", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ devices: batch }),
+        });
+        const data = (await response.json()) as QueryResponse;
 
-      if (!response.ok || data.status !== "success" || !Array.isArray(data.results)) {
-        throw new Error(responseMessage(data));
-      }
-
-      const validResults = data.results.filter(isDevice);
-      if (validResults.length !== data.results.length) {
-        throw new Error("El servicio MDM devolvió datos incompletos.");
+        if (!response.ok || data.status !== "success" || !Array.isArray(data.results)) {
+          throw new Error(responseMessage(data));
+        }
+        const batchResults = data.results.filter(isDevice);
+        if (batchResults.length !== data.results.length) {
+          throw new Error("El servicio MDM devolvió datos incompletos.");
+        }
+        validResults.push(...batchResults);
       }
 
       setDevices(validResults);
@@ -316,22 +408,36 @@ export function DeviceManagement() {
   }
 
   async function triggerAction(action: "lock" | "unlock") {
-    if (selectedDevices.length === 0) return;
+    if (!hasTargets || actionInProgress) return;
+    if (
+      selectedDevices.some((device) => !Number.isSafeInteger(device.db_id))
+    ) {
+      setNotice("Volvé a consultar: hay dispositivos sin identificador interno de Headwind.");
+      return;
+    }
 
     const actionLabel = action === "lock" ? "bloquear" : "desbloquear";
-    if (!window.confirm(`¿Confirmás ${actionLabel} ${selectedDevices.length} dispositivo(s)?`)) {
+    const targetLabel = `${selectedDevices.length} dispositivo(s)`;
+    if (!window.confirm(`¿Confirmás ${actionLabel} ${targetLabel}?`)) {
       return;
     }
 
     setPendingAction(action);
     setNotice("");
-    addLog(`Enviando comando para ${actionLabel} ${selectedDevices.length} dispositivo(s)…`);
+    addLog(`Enviando comando para ${actionLabel} ${targetLabel}…`);
 
     try {
-      const response = await fetch("/api/mdm/devices/action", {
+      if (!idempotencyKeyRef.current) {
+        idempotencyKeyRef.current = `action-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
+      const response = await fetch("/api/mdm/action-jobs", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKeyRef.current,
+        },
         body: JSON.stringify({
+          scope: "devices",
           devices: selectedDevices.map((device) => ({
             number: device.device_id,
             db_id: device.db_id,
@@ -340,27 +446,20 @@ export function DeviceManagement() {
           message: action === "lock" ? message.trim() : "",
         }),
       });
-      const data = (await response.json()) as ActionResponse;
+      const data = (await response.json()) as ActionJobResponse;
+      const job = parseMdmDeviceActionJob(data.job);
 
-      if (!response.ok || data.status !== "success" || !Array.isArray(data.results)) {
+      if (!response.ok || data.status !== "success" || !job) {
         throw new Error(responseMessage(data));
       }
 
-      const validResults = data.results.filter(isActionResult);
-      if (validResults.length !== data.results.length) {
-        throw new Error("El servicio MDM devolvió un resultado de acción incompleto.");
-      }
-
-      validResults.forEach((result) => addLog(result.message, result.success ? "success" : "error"));
-      const successfulIds = new Set(
-        validResults.filter((result) => result.success).map((result) => result.device_id),
-      );
-      setDevices((current) =>
-        current.map((device) =>
-          successfulIds.has(device.device_id)
-            ? { ...device, status: action === "lock" ? "Bloqueado" : "Libre" }
-            : device,
-        ),
+      idempotencyKeyRef.current = "";
+      setActiveJobId(job.id);
+      setActiveJob(job);
+      window.localStorage.setItem(ACTIVE_ACTION_JOB_KEY, job.id);
+      addLog(
+        `Acción ${action === "lock" ? "de bloqueo" : "de desbloqueo"} creada para ${targetLabel}.`,
+        "success",
       );
       setSelected(new Set());
       if (action === "lock") setMessage("");
@@ -371,6 +470,31 @@ export function DeviceManagement() {
       addLog(errorMessage, "error");
     } finally {
       setPendingAction(null);
+    }
+  }
+
+  async function retryFailedDevices() {
+    if (!activeJob || !isTerminalMdmDeviceActionJob(activeJob)) return;
+    setIsRetryingJob(true);
+    setNotice("");
+    try {
+      const response = await fetch(
+        `/api/mdm/action-jobs/${encodeURIComponent(activeJob.id)}/retry-failures`,
+        { method: "POST" },
+      );
+      const data = (await response.json()) as ActionJobResponse;
+      const job = parseMdmDeviceActionJob(data.job);
+      if (!response.ok || data.status !== "success" || !job) {
+        throw new Error(responseMessage(data));
+      }
+      setActiveJob(job);
+      setActiveJobId(job.id);
+      window.localStorage.setItem(ACTIVE_ACTION_JOB_KEY, job.id);
+      addLog(`Reintentando ${job.pending} dispositivo(s) fallido(s).`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "No se pudo reintentar la acción.");
+    } finally {
+      setIsRetryingJob(false);
     }
   }
 
@@ -401,7 +525,7 @@ export function DeviceManagement() {
                 <p>Un IMEI o Device ID por línea. También podés pegar una columna desde Excel.</p>
               </div>
             </div>
-            <span className={styles.counter}>{identifiers.length} / 100</span>
+            <span className={styles.counter}>{identifiers.length} / {maxSpecificDevices}</span>
           </div>
 
           <textarea
@@ -545,7 +669,7 @@ export function DeviceManagement() {
                   className={styles.unlockButton}
                   type="button"
                   onClick={() => triggerAction("unlock")}
-                  disabled={pendingAction !== null}
+                  disabled={pendingAction !== null || actionInProgress}
                 >
                   <UnlockIcon />
                   {pendingAction === "unlock" ? "Desbloqueando…" : "Desbloquear seleccionados"}
@@ -554,13 +678,44 @@ export function DeviceManagement() {
                   className={styles.lockButton}
                   type="button"
                   onClick={() => triggerAction("lock")}
-                  disabled={pendingAction !== null}
+                  disabled={pendingAction !== null || actionInProgress}
                 >
                   <LockIcon />
                   {pendingAction === "lock" ? "Bloqueando…" : "Bloquear seleccionados"}
                 </button>
               </div>
             </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {activeJob ? (
+        <section className={styles.jobProgress} aria-live="polite">
+          <div className={styles.jobProgressHeading}>
+            <div>
+              <span>{activeJob.action === "lock" ? <LockIcon /> : <UnlockIcon />}</span>
+              <div>
+                <small>PROCESAMIENTO EN SEGUNDO PLANO</small>
+                <strong>{mdmDeviceActionJobLabel(activeJob)}</strong>
+              </div>
+            </div>
+            <small>{activeJob.id}</small>
+          </div>
+          <progress
+            max={Math.max(activeJob.total, 1)}
+            value={activeJob.succeeded + activeJob.failed}
+          />
+          <div className={styles.jobStats}>
+            <div><span>Total</span><strong>{activeJob.total}</strong></div>
+            <div><span>Pendientes</span><strong>{activeJob.pending}</strong></div>
+            <div><span>Completados</span><strong>{activeJob.succeeded}</strong></div>
+            <div><span>Fallidos</span><strong>{activeJob.failed}</strong></div>
+          </div>
+          {activeJob.lastError ? <p>{activeJob.lastError}</p> : null}
+          {isTerminalMdmDeviceActionJob(activeJob) && activeJob.failed > 0 ? (
+            <button type="button" onClick={retryFailedDevices} disabled={isRetryingJob}>
+              {isRetryingJob ? "Reintentando…" : "Reintentar fallidos"}
+            </button>
           ) : null}
         </section>
       ) : null}

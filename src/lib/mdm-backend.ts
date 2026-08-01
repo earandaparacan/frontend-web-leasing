@@ -6,6 +6,7 @@ const DEFAULT_ACTION_PATH = "/api/v1/mdm/devices/action";
 const DEFAULT_GROUPS_PATH = "/api/v1/mdm/groups";
 const DEFAULT_MESSAGE_PATH = "/api/v1/mdm/messages";
 const DEFAULT_MESSAGE_JOBS_PATH = "/api/v1/mdm/message-jobs";
+const DEFAULT_ACTION_JOBS_PATH = "/api/v1/mdm/action-jobs";
 const DEFAULT_CAPABILITIES_PATH = "/api/v1/mdm/capabilities";
 const DEFAULT_LOCK_TEMPLATES_PATH = "/api/v1/mdm/lock-templates";
 const DEFAULT_MESSAGE_TEMPLATES_PATH = "/api/v1/mdm/message-templates";
@@ -40,6 +41,13 @@ export function getMdmMessageJobsUrl(jobId?: string, action?: "retry-failures") 
   if (!jobId) return getBackendUrl(DEFAULT_MESSAGE_JOBS_PATH);
 
   const jobPath = `${DEFAULT_MESSAGE_JOBS_PATH}/${encodeURIComponent(jobId)}`;
+  return getBackendUrl(action ? `${jobPath}/${action}` : jobPath);
+}
+
+export function getMdmActionJobsUrl(jobId?: string, action?: "retry-failures") {
+  if (!jobId) return getBackendUrl(DEFAULT_ACTION_JOBS_PATH);
+
+  const jobPath = `${DEFAULT_ACTION_JOBS_PATH}/${encodeURIComponent(jobId)}`;
   return getBackendUrl(action ? `${jobPath}/${action}` : jobPath);
 }
 

@@ -687,6 +687,118 @@
   background: var(--brand-orange-hover);
 }
 
+.jobProgress {
+  margin-top: 24px;
+  padding: 22px;
+  border: 1px solid #ddd4e8;
+  border-radius: 15px;
+  background: #faf8fd;
+}
+
+.jobProgressHeading,
+.jobProgressHeading > div,
+.jobProgressHeading > div > span {
+  display: flex;
+  align-items: center;
+}
+
+.jobProgressHeading {
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.jobProgressHeading > div {
+  gap: 12px;
+}
+
+.jobProgressHeading > div > span {
+  width: 36px;
+  height: 36px;
+  justify-content: center;
+  border-radius: 10px;
+  color: #fff;
+  background: var(--brand-orange);
+}
+
+.jobProgressHeading svg {
+  width: 17px;
+  height: 17px;
+}
+
+.jobProgressHeading div div {
+  display: grid;
+  gap: 3px;
+}
+
+.jobProgressHeading small {
+  max-width: 280px;
+  overflow: hidden;
+  color: #8e8798;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jobProgressHeading strong {
+  font-size: 12px;
+}
+
+.jobProgress progress {
+  width: 100%;
+  height: 9px;
+  margin-top: 18px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  accent-color: var(--brand-orange);
+}
+
+.jobStats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.jobStats > div {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.jobStats span {
+  color: #888;
+  font-size: 8px;
+}
+
+.jobStats strong {
+  font-size: 12px;
+}
+
+.jobProgress > p {
+  margin: 12px 0 0;
+  color: var(--error);
+  font-size: 10px;
+}
+
+.jobProgress > button {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: 9px;
+  color: #fff;
+  background: #262329;
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.jobProgress > button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
 .activity {
   margin-top: 24px;
   overflow: hidden;
@@ -871,6 +983,10 @@
   .actionButtons {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .jobStats {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
