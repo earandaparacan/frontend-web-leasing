@@ -19,6 +19,7 @@ function cookieValue(setCookie: string | null, name: string): string | null {
 export async function POST(request: Request) {
   try {
     const payload = (await request.json()) as LoginPayload;
+    const clientIp = request.headers.get("x-real-ip");
 
     if (
       typeof payload.username !== "string" ||
@@ -54,6 +55,7 @@ export async function POST(request: Request) {
           "Content-Type": "application/json",
           Cookie: `csrftoken=${csrfCookie}`,
           "X-CSRFToken": csrfData.csrf_token,
+          ...(clientIp ? { "X-Forwarded-For": clientIp } : {}),
         },
         body: JSON.stringify({
           username: payload.username.trim(),
@@ -79,7 +81,7 @@ export async function POST(request: Request) {
     }
 
     const result = NextResponse.json(data);
-    const secure = process.env.NODE_ENV === "production";
+    const secure = process.env.AUTH_COOKIE_SECURE !== "false";
     const persistent = payload.remember === true;
     const common = {
       httpOnly: true,

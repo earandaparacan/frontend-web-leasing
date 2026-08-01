@@ -8,6 +8,7 @@ services:
       - "${WEB_PORT:-3000}:3000"
     environment:
       BACKEND_URL: "${DOCKER_BACKEND_URL:-http://host.docker.internal:8000}"
+      AUTH_COOKIE_SECURE: "${AUTH_COOKIE_SECURE:-true}"
       MDM_BACKEND_URL: "${MDM_BACKEND_URL:-}"
       MDM_QUERY_PATH: "${MDM_QUERY_PATH:-}"
       MDM_ACTION_PATH: "${MDM_ACTION_PATH:-}"

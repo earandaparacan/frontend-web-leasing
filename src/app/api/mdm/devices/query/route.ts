@@ -4,6 +4,8 @@ type QueryPayload = {
   devices?: unknown;
 };
 
+const MDM_QUERY_TIMEOUT_MILLISECONDS = 120_000;
+
 export async function POST(request: Request) {
   let payload: QueryPayload;
 
@@ -33,5 +35,9 @@ export async function POST(request: Request) {
   }
 
   const devices = [...new Set(payload.devices.map((device) => device.trim()))];
-  return forwardMdmRequest(getMdmQueryUrl(), { devices });
+  return forwardMdmRequest(
+    getMdmQueryUrl(),
+    { devices },
+    MDM_QUERY_TIMEOUT_MILLISECONDS,
+  );
 }
