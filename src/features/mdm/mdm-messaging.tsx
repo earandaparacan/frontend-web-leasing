@@ -20,7 +20,6 @@ import {
   type MessageJobDetail,
 } from "./mdm-message-job";
 
-const DEVICE_RESULTS_PAGE_SIZE = 100;
 const ACTIVE_MESSAGE_JOB_KEY = "teklease-active-mdm-message-job";
 
 type Device = {
@@ -66,6 +65,21 @@ type ApiResponse = {
   capabilities?: unknown;
 };
 
+type LogEntry = {
+  id: string;
+  time: string;
+  message: string;
+  tone: "info" | "success" | "error";
+};
+
+function nowLabel() {
+  return new Intl.DateTimeFormat("es-PY", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(new Date());
+}
+
 function responseMessage(data: ApiResponse) {
   return data.message ?? data.error ?? "No se pudo completar la operación.";
 }
@@ -97,6 +111,15 @@ function isMdmBranch(value: unknown): value is MdmBranch {
     branch.id > 0 &&
     typeof branch.name === "string" &&
     branch.name.trim().length > 0
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-4-4" />
+    </svg>
   );
 }
 
@@ -207,8 +230,16 @@ export function MdmMessaging() {
   const [jobDetail, setJobDetail] = useState<MessageJobDetail | null>(null);
   const [loadingDetailJobId, setLoadingDetailJobId] = useState("");
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
-  const [visibleDeviceCount, setVisibleDeviceCount] = useState(DEVICE_RESULTS_PAGE_SIZE);
+  const [filter, setFilter] = useState("");
   const [notice, setNotice] = useState<{ tone: "error" | "success"; text: string } | null>(null);
+  const [logs, setLogs] = useState<LogEntry[]>([
+    {
+      id: "initial",
+      time: "Sistema",
+      message: "Panel listo para enviar mensajes.",
+      tone: "info",
+    },
+  ]);
   const jobRequestRef = useRef<{ signature: string; key: string } | null>(null);
   const detailTriggerRef = useRef<HTMLButtonElement>(null);
   const historyBackButtonRef = useRef<HTMLButtonElement>(null);
@@ -216,6 +247,14 @@ export function MdmMessaging() {
   const historyTriggerRef = useRef<HTMLButtonElement>(null);
 
   const identifiers = useMemo(() => parseIdentifiers(input), [input]);
+  const foundDevices = devices.filter((device) => device.found);
+  const visibleDevices = devices.filter((device) => {
+    const term = filter.trim().toLowerCase();
+    if (!term) return true;
+    return [device.device_id, device.imei, device.description, device.configuration_name, device.groups]
+      .filter(Boolean)
+      .some((value) => value?.toLowerCase().includes(term));
+  });
   const selectedDevices = devices.filter(
     (device) => device.found && selected.has(device.device_id),
   );
@@ -224,6 +263,27 @@ export function MdmMessaging() {
     (device) => device.device_id,
   );
   const selectedGroup = groups.find((group) => group.id === Number(selectedGroupId));
+  const canComposeMessage =
+    targetMode === "devices"
+      ? selectedDevices.length > 0
+      : targetMode === "group"
+        ? Boolean(selectedGroup)
+        : true;
+  const allVisibleDevicesSelected =
+    visibleDevices.some((device) => device.found) &&
+    visibleDevices.filter((device) => device.found).every((device) => selected.has(device.device_id));
+
+  function addLog(messageText: string, tone: LogEntry["tone"] = "info") {
+    setLogs((current) => [
+      ...current,
+      {
+        id: `${Date.now()}-${Math.random()}`,
+        time: nowLabel(),
+        message: messageText,
+        tone,
+      },
+    ]);
+  }
 
   async function loadJobHistory() {
     try {
@@ -423,19 +483,24 @@ export function MdmMessaging() {
         if (job.status === "SUCCEEDED") {
           continuePolling = false;
           setNotice({ tone: "success", text: "Headwind aceptó todos los mensajes del envío." });
+          addLog(`Envío ${job.id} aceptado por Headwind.`, "success");
         } else if (isTerminalMessageJob(job)) {
           continuePolling = false;
+          const errorMessage = `El envío terminó con ${job.failed} dispositivo${job.failed === 1 ? "" : "s"} fallido${job.failed === 1 ? "" : "s"}.`;
           setNotice({
             tone: "error",
-            text: `El envío terminó con ${job.failed} dispositivo${job.failed === 1 ? "" : "s"} fallido${job.failed === 1 ? "" : "s"}.`,
+            text: errorMessage,
           });
+          addLog(errorMessage, "error");
         }
       } catch (error) {
         if (controller.signal.aborted) return;
+        const errorMessage = error instanceof Error ? error.message : "No se pudo actualizar el progreso.";
         setNotice({
           tone: "error",
-          text: error instanceof Error ? error.message : "No se pudo actualizar el progreso.",
+          text: errorMessage,
         });
+        addLog(errorMessage, "error");
       } finally {
         if (!stopped && continuePolling) timeout = window.setTimeout(pollJob, 2_000);
       }
@@ -455,7 +520,7 @@ export function MdmMessaging() {
     setNotice(null);
     setDevices([]);
     setSelected(new Set());
-    setVisibleDeviceCount(DEVICE_RESULTS_PAGE_SIZE);
+    setFilter("");
   }
 
   function handleClearForm() {
@@ -469,7 +534,7 @@ export function MdmMessaging() {
     setSelectedTemplate("");
     setActiveJob(null);
     setNotice(null);
-    setVisibleDeviceCount(DEVICE_RESULTS_PAGE_SIZE);
+    setFilter("");
     jobRequestRef.current = null;
   }
 
@@ -520,6 +585,7 @@ export function MdmMessaging() {
     setNotice(null);
     setDevices([]);
     setSelected(new Set());
+    addLog(`Verificando ${identifiers.length} dispositivo(s)…`);
 
     try {
       const verifiedDevices: Device[] = [];
@@ -552,20 +618,26 @@ export function MdmMessaging() {
         verifiedDevices.push(...batchResults.flat());
       }
 
-      const foundDevices = verifiedDevices.filter((device) => device.found);
       setDevices(verifiedDevices);
-      setVisibleDeviceCount(DEVICE_RESULTS_PAGE_SIZE);
-      setSelected(new Set(foundDevices.map((device) => device.device_id)));
+      setSelected(new Set());
+      setFilter("");
+      const found = verifiedDevices.filter((device) => device.found).length;
+      addLog(
+        `Verificación completada: ${found} encontrado(s) y ${verifiedDevices.length - found} sin registro.`,
+        "success",
+      );
       setNotice(
-        foundDevices.length === 0
+        verifiedDevices.every((device) => !device.found)
           ? { tone: "error", text: "No encontramos ningún dispositivo registrado." }
           : null,
       );
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "No se pudo verificar el dispositivo.";
       setNotice({
         tone: "error",
-        text: error instanceof Error ? error.message : "No se pudo verificar el dispositivo.",
+        text: errorMessage,
       });
+      addLog(errorMessage, "error");
     } finally {
       setIsVerifying(false);
     }
@@ -679,8 +751,8 @@ export function MdmMessaging() {
       return;
     }
 
-    if (targetMode === "devices" && devicesForJob.length === 0) {
-      setNotice({ tone: "error", text: "Verificá al menos un identificador antes de enviar." });
+    if (targetMode === "devices" && selectedDevices.length === 0) {
+      setNotice({ tone: "error", text: "Seleccioná al menos un dispositivo antes de enviar." });
       return;
     }
     if (targetMode === "group" && !selectedGroup) {
@@ -724,6 +796,13 @@ export function MdmMessaging() {
 
     setIsSending(true);
     setNotice(null);
+    const targetLabel =
+      targetMode === "devices"
+        ? `${devicesForJob.length} identificador(es)`
+        : targetMode === "group"
+          ? `el grupo ${selectedGroup?.name ?? "seleccionado"}`
+          : "todos los dispositivos";
+    addLog(`Solicitando envío a ${targetLabel}…`);
 
     try {
       if (targetMode === "devices") {
@@ -759,6 +838,7 @@ export function MdmMessaging() {
           tone: "success",
           text: `Envío ${job.id} creado. Podés seguir el progreso sin mantener esta solicitud abierta.`,
         });
+        addLog(`Envío ${job.id} creado para ${targetLabel}.`, "success");
         return;
       }
 
@@ -786,11 +866,14 @@ export function MdmMessaging() {
         tone: "success",
         text: "Mensaje aceptado por Headwind.",
       });
+      addLog(`Mensaje aceptado por Headwind para ${targetLabel}.`, "success");
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "No se pudo enviar el mensaje.";
       setNotice({
         tone: "error",
-        text: error instanceof Error ? error.message : "No se pudo enviar el mensaje.",
+        text: errorMessage,
       });
+      addLog(errorMessage, "error");
     } finally {
       setIsSending(false);
     }
@@ -814,14 +897,30 @@ export function MdmMessaging() {
       setActiveJob(job);
       void loadJobHistory();
       setNotice({ tone: "success", text: "Los errores transitorios volvieron a la cola." });
+      addLog(`Reintentando ${job.pending} dispositivo(s) fallido(s).`);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "No se pudieron reintentar los fallidos.";
       setNotice({
         tone: "error",
-        text: error instanceof Error ? error.message : "No se pudieron reintentar los fallidos.",
+        text: errorMessage,
       });
+      addLog(errorMessage, "error");
     } finally {
       setIsRetryingJob(false);
     }
+  }
+
+  function toggleVisibleDevices() {
+    setNotice(null);
+    setSelected((current) => {
+      const next = new Set(current);
+      visibleDevices.forEach((device) => {
+        if (!device.found) return;
+        if (allVisibleDevicesSelected) next.delete(device.device_id);
+        else next.add(device.device_id);
+      });
+      return next;
+    });
   }
 
   async function handleRerun(job: MessageJob) {
@@ -845,11 +944,14 @@ export function MdmMessaging() {
       setActiveJob(rerun);
       setJobHistory((current) => [rerun, ...current]);
       setNotice({ tone: "success", text: "El envío volvió a quedar en cola." });
+      addLog(`El envío ${rerun.id} volvió a quedar en cola.`, "success");
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "No se pudo volver a ejecutar el envío.";
       setNotice({
         tone: "error",
-        text: error instanceof Error ? error.message : "No se pudo volver a ejecutar el envío.",
+        text: errorMessage,
       });
+      addLog(errorMessage, "error");
     } finally {
       setRerunningJobId("");
     }
@@ -926,7 +1028,6 @@ export function MdmMessaging() {
               >
                 Limpiar formulario
               </button>
-              <span className={styles.secureBadge}><ShieldIcon /> Canal protegido</span>
             </div>
           </div>
 
@@ -972,28 +1073,6 @@ export function MdmMessaging() {
               </button>
             </div>
 
-            <div className={styles.groupTarget}>
-              <label>
-                <span>Sucursal</span>
-                <select
-                  value={branchId}
-                  onChange={(event) => {
-                    setBranchId(event.target.value);
-                    setNotice(null);
-                  }}
-                  disabled={isLoadingBranches || isSending}
-                >
-                  <option value="">
-                    {isLoadingBranches ? "Cargando sucursales…" : "Seleccionar sucursal"}
-                  </option>
-                  {branches.map((branch) => (
-                    <option key={branch.id} value={branch.id}>{branch.name}</option>
-                  ))}
-                </select>
-              </label>
-              <small>La sucursal queda registrada en la ejecución del envío.</small>
-            </div>
-
             {targetMode === "devices" ? (
               <>
                 <form className={styles.deviceSearch} onSubmit={handleVerify}>
@@ -1035,71 +1114,6 @@ export function MdmMessaging() {
                   </label>
                 </div>
 
-                {devices.length > 0 ? (
-                  <div className={styles.deviceList} aria-label="Dispositivos verificados">
-                    {devices.slice(0, visibleDeviceCount).map((device) =>
-                      device.found ? (
-                        <div
-                          className={`${styles.deviceCard} ${
-                            selected.has(device.device_id) ? styles.selectedDevice : ""
-                          }`}
-                          key={device.device_id}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selected.has(device.device_id)}
-                            onChange={() => toggleDevice(device.device_id)}
-                            disabled={isSending}
-                            aria-label={`Seleccionar ${device.device_id}`}
-                          />
-                          <span className={styles.deviceStatus}><CheckIcon /></span>
-                          <div>
-                            <strong>{device.device_id}</strong>
-                            <small>{device.description || "Dispositivo registrado"}</small>
-                          </div>
-                          <dl>
-                            <div><dt>IMEI</dt><dd>{device.imei || "Sin datos"}</dd></div>
-                            <div><dt>Grupo</dt><dd>{device.groups || "Sin grupo"}</dd></div>
-                          </dl>
-                        </div>
-                      ) : (
-                        <div className={styles.missingDevice} key={device.device_id}>
-                          <span>!</span>
-                          <p>
-                            <strong>{device.device_id}</strong>
-                            <small>{device.error || "No registrado en el servidor MDM"}</small>
-                          </p>
-                        </div>
-                      ),
-                    )}
-                    {visibleDeviceCount < devices.length ? (
-                      <button
-                        className={styles.showMoreButton}
-                        type="button"
-                        onClick={() =>
-                          setVisibleDeviceCount((current) =>
-                            Math.min(current + DEVICE_RESULTS_PAGE_SIZE, devices.length),
-                          )
-                        }
-                      >
-                        Mostrar {Math.min(DEVICE_RESULTS_PAGE_SIZE, devices.length - visibleDeviceCount)} más
-                      </button>
-                    ) : null}
-                    <div className={styles.selectionSummary}>
-                      <span>
-                        {selectedDevices.length} dispositivo{selectedDevices.length === 1 ? "" : "s"} seleccionado{selectedDevices.length === 1 ? "" : "s"}
-                      </span>
-                      {missingDevices.length > 0 ? (
-                        <strong>
-                          {missingDevices.length} no encontrado{missingDevices.length === 1 ? "" : "s"}: se registrar{missingDevices.length === 1 ? "á" : "án"} sin enviarlo{missingDevices.length === 1 ? "" : "s"} a Headwind
-                        </strong>
-                      ) : null}
-                      <button type="button" onClick={() => setSelected(new Set())} disabled={isSending}>
-                        Quitar selección
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
               </>
             ) : targetMode === "all" ? (
               <div className={styles.broadcastNotice}>
@@ -1140,6 +1154,117 @@ export function MdmMessaging() {
           </div>
           </section>
 
+          {devices.length > 0 ? (
+            <section className={styles.results} aria-labelledby="verified-devices-heading">
+              <div className={styles.resultsHeading}>
+                <div>
+                  <h2 id="verified-devices-heading">Dispositivos verificados</h2>
+                  <p>Los no encontrados quedarán registrados en la ejecución, sin enviarse a Headwind.</p>
+                </div>
+                <div className={styles.resultTools}>
+                  <label className={styles.searchField}>
+                    <SearchIcon />
+                    <span className="sr-only">Filtrar resultados</span>
+                    <input
+                      type="search"
+                      value={filter}
+                      onChange={(event) => setFilter(event.target.value)}
+                      placeholder="Filtrar resultados"
+                    />
+                  </label>
+                  <span className={styles.resultCount}>
+                    {foundDevices.length} encontrado{foundDevices.length === 1 ? "" : "s"}
+                    {missingDevices.length > 0
+                      ? ` · ${missingDevices.length} no encontrado${missingDevices.length === 1 ? "" : "s"}`
+                      : ""}
+                  </span>
+                </div>
+              </div>
+
+              <div className={styles.tableWrap}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th className={styles.checkColumn}>
+                        <label className={styles.selectionCheckbox}>
+                          <input
+                            type="checkbox"
+                            checked={allVisibleDevicesSelected}
+                            onChange={toggleVisibleDevices}
+                            disabled={isSending || !visibleDevices.some((device) => device.found)}
+                            aria-label="Seleccionar dispositivos visibles"
+                          />
+                          <span><CheckIcon /></span>
+                        </label>
+                      </th>
+                      <th>Equipo</th>
+                      <th>Asignación</th>
+                      <th>Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleDevices.map((device) =>
+                      device.found ? (
+                        <tr
+                          className={selected.has(device.device_id) ? styles.selectedRow : undefined}
+                          key={device.device_id}
+                        >
+                          <td className={styles.checkColumn}>
+                            <label className={styles.selectionCheckbox}>
+                              <input
+                                type="checkbox"
+                                checked={selected.has(device.device_id)}
+                                onChange={() => toggleDevice(device.device_id)}
+                                disabled={isSending}
+                                aria-label={`Seleccionar ${device.device_id}`}
+                              />
+                              <span><CheckIcon /></span>
+                            </label>
+                          </td>
+                          <td>
+                            <strong>{device.device_id}</strong>
+                            <small>IMEI: {device.imei || "Sin datos"}</small>
+                            {device.description ? <span>{device.description}</span> : null}
+                          </td>
+                          <td>
+                            <strong>{device.configuration_name || "Sin asignación"}</strong>
+                            <small>{device.groups || "Sin grupo"}</small>
+                          </td>
+                          <td>
+                            <span className={styles.deviceStatus}>Disponible</span>
+                          </td>
+                        </tr>
+                      ) : (
+                        <tr className={styles.missingRow} key={device.device_id}>
+                          <td className={styles.checkColumn} />
+                          <td>
+                            <strong>{device.device_id}</strong>
+                            <small>{device.error || "No registrado en el servidor MDM"}</small>
+                          </td>
+                          <td>El dispositivo no está disponible para recibir mensajes.</td>
+                          <td><span className={`${styles.deviceStatus} ${styles.missingStatus}`}>No encontrado</span></td>
+                        </tr>
+                      ),
+                    )}
+                  </tbody>
+                </table>
+                {visibleDevices.length === 0 ? (
+                  <p className={styles.emptyResults}>No hay resultados que coincidan con el filtro.</p>
+                ) : null}
+              </div>
+
+              <div className={styles.selectionSummary}>
+                <span>
+                  {selectedDevices.length} dispositivo{selectedDevices.length === 1 ? "" : "s"} seleccionado{selectedDevices.length === 1 ? "" : "s"}
+                </span>
+                <button type="button" onClick={() => setSelected(new Set())} disabled={isSending || selectedDevices.length === 0}>
+                  Quitar selección
+                </button>
+              </div>
+            </section>
+          ) : null}
+
+          {canComposeMessage ? (
           <section className={`${styles.card} ${styles.messageCard}`} aria-labelledby="message-content-heading">
             <form className={styles.messageForm} onSubmit={handleSend}>
               <div className={styles.stepHeading}>
@@ -1154,6 +1279,28 @@ export function MdmMessaging() {
                         : "El aviso aparecerá en todos los dispositivos seleccionados."}
                   </small>
                 </div>
+              </div>
+
+              <div className={styles.branchField}>
+                <label>
+                  <span>Sucursal</span>
+                  <select
+                    value={branchId}
+                    onChange={(event) => {
+                      setBranchId(event.target.value);
+                      setNotice(null);
+                    }}
+                    disabled={isLoadingBranches || isSending}
+                  >
+                    <option value="">
+                      {isLoadingBranches ? "Cargando sucursales…" : "Seleccionar sucursal"}
+                    </option>
+                    {branches.map((branch) => (
+                      <option key={branch.id} value={branch.id}>{branch.name}</option>
+                    ))}
+                  </select>
+                </label>
+                <small>La sucursal queda registrada en la ejecución del envío.</small>
               </div>
 
               <div className={styles.templateControls}>
@@ -1250,7 +1397,7 @@ export function MdmMessaging() {
                 className={styles.sendButton}
                 type="submit"
                 disabled={
-                  (targetMode === "devices" && devicesForJob.length === 0) ||
+                  (targetMode === "devices" && selectedDevices.length === 0) ||
                   (targetMode === "group" && !selectedGroup) ||
                   !message.trim() ||
                   !branchId ||
@@ -1273,6 +1420,7 @@ export function MdmMessaging() {
               </button>
             </form>
           </section>
+          ) : null}
 
         </div>
 
@@ -1314,22 +1462,28 @@ export function MdmMessaging() {
             </button>
           </section>
 
-          <section className={styles.helpCard}>
-            <div className={styles.helpIcon}><ShieldIcon /></div>
-            <span>ENVÍO SEGURO</span>
-            <h2>Siempre protegido</h2>
-            <ol>
-              <li><i>1</i><p><strong>Verificación</strong><small>Confirmamos que los equipos existen en Headwind MDM.</small></p></li>
-              <li><i>2</i><p><strong>Envío interno</strong><small>Django autentica la solicitud sin compartir secretos con la web.</small></p></li>
-              <li><i>3</i><p><strong>Entrega por MQTT</strong><small>Headwind remite el aviso al agente instalado.</small></p></li>
-            </ol>
-            <div className={styles.helpNote}>
-              <MessageIcon />
-              <p><strong>Antes de enviar</strong><span>Revisá los dispositivos y el contenido. El envío queda auditado.</span></p>
-            </div>
-          </section>
         </aside>
       </div>
+
+      <section className={styles.activity} aria-labelledby="message-activity-heading">
+        <div className={styles.activityHeader}>
+          <div>
+            <span className={styles.liveDot} />
+            <strong id="message-activity-heading">Actividad de la sesión</strong>
+          </div>
+          <button type="button" onClick={() => setLogs([])} disabled={logs.length === 0}>
+            Limpiar
+          </button>
+        </div>
+        <div className={styles.logList} aria-live="polite">
+          {logs.length ? logs.map((log) => (
+            <div className={`${styles.logEntry} ${styles[`logEntry--${log.tone}`]}`} key={log.id}>
+              <span>[{log.time}]</span>
+              <p>{log.message}</p>
+            </div>
+          )) : <p className={styles.emptyLog}>No hay actividad registrada en esta sesión.</p>}
+        </div>
+      </section>
 
       {isHistoryDrawerOpen ? (
         <>
