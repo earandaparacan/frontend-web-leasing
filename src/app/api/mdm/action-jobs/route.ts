@@ -9,16 +9,10 @@ type CreateActionJobPayload = {
   branch_id?: unknown;
 };
 
-function isDevice(value: unknown): value is { number: string; db_id: number } {
+function isDevice(value: unknown): value is { number: string } {
   if (typeof value !== "object" || value === null) return false;
   const device = value as Record<string, unknown>;
-  return (
-    typeof device.number === "string" &&
-    device.number.trim().length > 0 &&
-    typeof device.db_id === "number" &&
-    Number.isSafeInteger(device.db_id) &&
-    device.db_id > 0
-  );
+  return typeof device.number === "string" && device.number.trim().length > 0;
 }
 
 export async function POST(request: Request) {
@@ -73,8 +67,8 @@ export async function POST(request: Request) {
   const devices = Array.isArray(payload.devices) ? [
     ...new Map(
       payload.devices.map((device) => [
-        device.db_id,
-        { number: device.number.trim(), db_id: device.db_id },
+        device.number.trim(),
+        { number: device.number.trim() },
       ]),
     ).values(),
   ] : [];

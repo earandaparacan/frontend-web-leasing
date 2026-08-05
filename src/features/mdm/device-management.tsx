@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { CheckIcon, LockIcon, ShieldIcon } from "@/components/icons";
 import {
   isTerminalMdmDeviceActionJob,
+  mdmDeviceActionJobItemLabel,
   mdmDeviceActionJobLabel,
   parseMdmDeviceActionJob,
   parseMdmDeviceActionJobDetail,
@@ -151,6 +152,62 @@ function formatJobDate(value: string) {
   }).format(new Date(value));
 }
 
+function escapeSpreadsheetValue(value: string) {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function spreadsheetRow(values: string[]) {
+  return `<Row>${values
+    .map(
+      (value) =>
+        `<Cell><Data ss:Type="String">${escapeSpreadsheetValue(value)}</Data></Cell>`,
+    )
+    .join("")}</Row>`;
+}
+
+function downloadActionJobSummary(job: MdmDeviceActionJobDetail) {
+  const summaryRows = [
+    ["Ejecución", job.id],
+    ["Acción", job.action === "lock" ? "Bloqueo" : "Desbloqueo"],
+    ["Estado", mdmDeviceActionJobLabel(job)],
+    ["Sucursal", job.branchName || "Sin sucursal"],
+    ["Fecha", formatJobDate(job.createdAt)],
+    ["Total", String(job.total)],
+    ["Completados", String(job.succeeded)],
+    ["Fallidos", String(job.failed)],
+  ]
+    .map(spreadsheetRow)
+    .join("");
+  const itemRows = job.items
+    .map((item) =>
+      spreadsheetRow([
+        item.deviceId,
+        mdmDeviceActionJobItemLabel(item.status),
+        String(item.attempts),
+        item.lastError || "Sin error registrado",
+      ]),
+    )
+    .join("");
+  const spreadsheet = `<?xml version="1.0" encoding="UTF-8"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+  <Worksheet ss:Name="Resumen y detalle"><Table>
+    ${summaryRows}
+    <Row></Row>
+    ${spreadsheetRow(["IMEI / identificador", "Estado", "Intentos", "Último error"])}
+    ${itemRows}
+  </Table></Worksheet>
+</Workbook>`;
+  const blob = new Blob([spreadsheet], {
+    type: "application/vnd.ms-excel;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `resumen-${job.action}-${job.id}.xls`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 const ACTIVE_ACTION_JOB_KEY = "teklease-active-mdm-device-action-job";
 
 export function DeviceManagement() {
@@ -159,6 +216,7 @@ export function DeviceManagement() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState("");
   const [message, setMessage] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState("");
   const [templates, setTemplates] = useState<string[]>([]);
   const [branches, setBranches] = useState<MdmBranch[]>([]);
   const [branchId, setBranchId] = useState("");
@@ -174,10 +232,15 @@ export function DeviceManagement() {
   const [rerunningJobId, setRerunningJobId] = useState("");
   const [jobDetail, setJobDetail] = useState<MdmDeviceActionJobDetail | null>(null);
   const [loadingDetailJobId, setLoadingDetailJobId] = useState("");
+  const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
   const [isRetryingJob, setIsRetryingJob] = useState(false);
   const [maxSpecificDevices, setMaxSpecificDevices] = useState(1000);
   const [queryBatchSize, setQueryBatchSize] = useState(20);
   const idempotencyKeyRef = useRef("");
+  const detailTriggerRef = useRef<HTMLButtonElement>(null);
+  const historyBackButtonRef = useRef<HTMLButtonElement>(null);
+  const historyCloseButtonRef = useRef<HTMLButtonElement>(null);
+  const historyTriggerRef = useRef<HTMLButtonElement>(null);
   const [notice, setNotice] = useState("");
   const [logs, setLogs] = useState<LogEntry[]>([
     {
@@ -198,7 +261,9 @@ export function DeviceManagement() {
       .some((value) => value?.toLowerCase().includes(term));
   });
   const selectedDevices = foundDevices.filter((device) => selected.has(device.device_id));
-  const hasTargets = selectedDevices.length > 0;
+  const notFoundDevices = devices.filter((device) => !device.found);
+  const actionDevices = [...selectedDevices, ...notFoundDevices];
+  const hasTargets = actionDevices.length > 0;
   const actionInProgress = Boolean(activeJob && !isTerminalMdmDeviceActionJob(activeJob));
   const allVisibleSelected =
     visibleDevices.some((device) => device.found) &&
@@ -268,6 +333,25 @@ export function DeviceManagement() {
   useEffect(() => {
     void loadJobHistory();
   }, []);
+
+  useEffect(() => {
+    if (jobDetail) historyBackButtonRef.current?.focus();
+  }, [jobDetail]);
+
+  useEffect(() => {
+    if (!isHistoryDrawerOpen) return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setJobDetail(null);
+      setIsHistoryDrawerOpen(false);
+      window.setTimeout(() => historyTriggerRef.current?.focus(), 0);
+    }
+
+    historyCloseButtonRef.current?.focus();
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isHistoryDrawerOpen]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -367,11 +451,6 @@ export function DeviceManagement() {
         void loadJobHistory();
         if (isTerminalMdmDeviceActionJob(job)) {
           window.localStorage.removeItem(ACTIVE_ACTION_JOB_KEY);
-          setNotice(
-            job.status === "SUCCEEDED"
-              ? `La acción terminó correctamente en ${job.succeeded} dispositivo(s).`
-              : `La acción terminó con ${job.failed} dispositivo(s) fallido(s).`,
-          );
           return;
         }
       } catch (error) {
@@ -458,6 +537,21 @@ export function DeviceManagement() {
     await queryDevices();
   }
 
+  function handleClearForm() {
+    setInput("");
+    setDevices([]);
+    setSelected(new Set());
+    setFilter("");
+    setMessage("");
+    setSelectedTemplate("");
+    setBranchId("");
+    setNotice("");
+    setActiveJobId("");
+    setActiveJob(null);
+    idempotencyKeyRef.current = "";
+    window.localStorage.removeItem(ACTIVE_ACTION_JOB_KEY);
+  }
+
   function toggleDevice(deviceId: string) {
     setSelected((current) => {
       const next = new Set(current);
@@ -480,6 +574,7 @@ export function DeviceManagement() {
   }
 
   function applyTemplate(value: string) {
+    setSelectedTemplate(value);
     if (value) setMessage(value);
   }
 
@@ -527,15 +622,8 @@ export function DeviceManagement() {
       setNotice("Seleccioná una sucursal antes de ejecutar la acción.");
       return;
     }
-    if (
-      selectedDevices.some((device) => !Number.isSafeInteger(device.db_id))
-    ) {
-      setNotice("Volvé a consultar: hay dispositivos sin identificador interno de Headwind.");
-      return;
-    }
-
     const actionLabel = action === "lock" ? "bloquear" : "desbloquear";
-    const targetLabel = `${selectedDevices.length} dispositivo(s)`;
+    const targetLabel = `${actionDevices.length} identificador(es)`;
     if (!window.confirm(`¿Confirmás ${actionLabel} ${targetLabel}?`)) {
       return;
     }
@@ -556,9 +644,8 @@ export function DeviceManagement() {
         },
         body: JSON.stringify({
           scope: "devices",
-          devices: selectedDevices.map((device) => ({
+          devices: actionDevices.map((device) => ({
             number: device.device_id,
-            db_id: device.db_id,
           })),
           action,
           branch_id: selectedBranchId,
@@ -582,7 +669,10 @@ export function DeviceManagement() {
         "success",
       );
       setSelected(new Set());
-      if (action === "lock") setMessage("");
+      if (action === "lock") {
+        setMessage("");
+        setSelectedTemplate("");
+      }
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "No se pudo enviar el comando al MDM.";
@@ -669,6 +759,17 @@ export function DeviceManagement() {
     }
   }
 
+  function returnToHistory() {
+    setJobDetail(null);
+    window.setTimeout(() => detailTriggerRef.current?.focus(), 0);
+  }
+
+  function closeHistoryDrawer() {
+    setJobDetail(null);
+    setIsHistoryDrawerOpen(false);
+    window.setTimeout(() => historyTriggerRef.current?.focus(), 0);
+  }
+
   return (
     <div className={styles.page}>
       <section className={styles.hero}>
@@ -677,26 +778,45 @@ export function DeviceManagement() {
           <h1>Bloqueo y desbloqueo</h1>
           <p>Consultá el estado real de tus equipos y ejecutá acciones masivas de forma segura.</p>
         </div>
-        <div className={styles.securityNote}>
-          <ShieldIcon />
-          <span>
-            <strong>Entorno protegido</strong>
-            Acciones registradas y monitoreadas
-          </span>
+        <div className={styles.heroActions}>
+          <div className={styles.securityNote}>
+            <ShieldIcon />
+            <span>
+              <strong>Entorno protegido</strong>
+              Acciones registradas y monitoreadas
+            </span>
+          </div>
         </div>
       </section>
 
+      <div className={styles.contentLayout}>
+        <main className={styles.mainColumn}>
       <section className={styles.queryCard}>
         <form onSubmit={handleQuery}>
           <div className={styles.queryHeading}>
             <div>
-              <span className={styles.step}>01</span>
+              <span className={styles.step}>1</span>
               <div>
-                <h2>Ingresá los dispositivos</h2>
-                <p>Un IMEI o Device ID por línea. También podés pegar una columna desde Excel.</p>
+                <h2>Elegí los dispositivos</h2>
+                <p>Ingresá un IMEI o Device ID por línea y verificá cuáles existen en Headwind.</p>
               </div>
             </div>
-            <span className={styles.counter}>{identifiers.length} / {maxSpecificDevices}</span>
+            <div className={styles.queryTools}>
+              <span className={styles.counter}>{identifiers.length} / {maxSpecificDevices}</span>
+              <button
+                className={styles.clearFormButton}
+                type="button"
+                onClick={handleClearForm}
+                disabled={
+                  isQuerying ||
+                  pendingAction !== null ||
+                  isSavingTemplate ||
+                  isRetryingJob
+                }
+              >
+                Limpiar formulario
+              </button>
+            </div>
           </div>
 
           <textarea
@@ -731,12 +851,9 @@ export function DeviceManagement() {
       {devices.length > 0 ? (
         <section className={styles.results}>
           <div className={styles.resultsHeading}>
-            <div>
-              <span className={styles.step}>02</span>
-              <div>
-                <h2>Vista previa de dispositivos</h2>
-                <p>Verificá el estado antes de ejecutar cualquier acción.</p>
-              </div>
+            <div className={styles.resultsHeadingText}>
+              <h2>Dispositivos verificados</h2>
+              <p>Los no encontrados quedarán registrados en la ejecución, sin enviarse a Headwind.</p>
             </div>
             <div className={styles.resultTools}>
               <label className={styles.searchField}>
@@ -749,7 +866,10 @@ export function DeviceManagement() {
                   placeholder="Filtrar resultados"
                 />
               </label>
-              <span className={styles.resultCount}>{foundDevices.length} encontrados</span>
+              <span className={styles.resultCount}>
+                {foundDevices.length} encontrados
+                {notFoundDevices.length > 0 ? ` · ${notFoundDevices.length} no encontrados` : ""}
+              </span>
             </div>
           </div>
 
@@ -782,20 +902,18 @@ export function DeviceManagement() {
               <div className={styles.empty}>No hay resultados que coincidan con el filtro.</div>
             ) : null}
           </div>
+        </section>
+      ) : null}
 
-          {selectedDevices.length > 0 ? (
-            <div className={styles.actionPanel}>
-              <div className={styles.actionPanelHeading}>
+      {devices.length > 0 && hasTargets ? (
+            <section className={styles.actionPanel}>
+              <div className={styles.actionStepHeading}>
+                <span className={styles.step}>2</span>
                 <div>
-                  <span className={styles.selectedCount}>{selectedDevices.length}</span>
-                  <span>
-                    <strong>Equipo{selectedDevices.length === 1 ? "" : "s"} seleccionado{selectedDevices.length === 1 ? "" : "s"}</strong>
-                    Listos para ejecutar una acción
-                  </span>
+                  <h2>Elegí la acción</h2>
+                  <p>Confirmá la sucursal y ejecutá el bloqueo o desbloqueo.</p>
                 </div>
-                <button type="button" onClick={() => setSelected(new Set())}>Limpiar selección</button>
               </div>
-
               <div className={styles.actionFields}>
                 <label>
                   <span>Sucursal</span>
@@ -824,7 +942,7 @@ export function DeviceManagement() {
                 <label>
                   <span>Plantilla</span>
                   <select
-                    defaultValue=""
+                    value={selectedTemplate}
                     onChange={(event) => applyTemplate(event.target.value)}
                     disabled={isLoadingTemplates || templates.length === 0}
                   >
@@ -858,7 +976,11 @@ export function DeviceManagement() {
                   disabled={pendingAction !== null || actionInProgress || !branchId}
                 >
                   <UnlockIcon />
-                  {pendingAction === "unlock" ? "Desbloqueando…" : "Desbloquear seleccionados"}
+                  {pendingAction === "unlock"
+                    ? "Desbloqueando…"
+                    : selectedDevices.length > 0
+                      ? "Desbloquear seleccionados"
+                      : "Registrar no encontrados"}
                 </button>
                 <button
                   className={styles.lockButton}
@@ -867,13 +989,15 @@ export function DeviceManagement() {
                   disabled={pendingAction !== null || actionInProgress || !branchId}
                 >
                   <LockIcon />
-                  {pendingAction === "lock" ? "Bloqueando…" : "Bloquear seleccionados"}
+                  {pendingAction === "lock"
+                    ? "Bloqueando…"
+                    : selectedDevices.length > 0
+                      ? "Bloquear seleccionados"
+                      : "Registrar no encontrados"}
                 </button>
               </div>
-            </div>
+            </section>
           ) : null}
-        </section>
-      ) : null}
 
       {activeJob ? (
         <section className={styles.jobProgress} aria-live="polite">
@@ -906,83 +1030,190 @@ export function DeviceManagement() {
         </section>
       ) : null}
 
-      <section className={styles.history} aria-labelledby="action-history-heading">
-        <div className={styles.historyHeading}>
-          <div>
-            <span>HISTORIAL</span>
-            <h2 id="action-history-heading">Ejecuciones recientes</h2>
-          </div>
-          <button type="button" onClick={() => void loadJobHistory()} disabled={isLoadingHistory}>
-            {isLoadingHistory ? "Actualizando…" : "Actualizar"}
-          </button>
-        </div>
-        {isLoadingHistory ? (
-          <p className={styles.historyEmpty}>Cargando ejecuciones…</p>
-        ) : jobHistory.length === 0 ? (
-          <p className={styles.historyEmpty}>Todavía no hay acciones registradas.</p>
-        ) : (
-          <div className={styles.historyList}>
-            {jobHistory.map((job) => (
-              <article className={styles.historyItem} key={job.id}>
-                <div>
-                  <strong>{job.action === "lock" ? "Bloquear" : "Desbloquear"} · {mdmDeviceActionJobLabel(job)}</strong>
-                  <small>{formatJobDate(job.createdAt)} · {job.branchName || "Sin sucursal"}</small>
-                </div>
-                <dl>
-                  <div><dt>Equipos</dt><dd>{job.total}</dd></div>
-                  <div><dt>Completados</dt><dd>{job.succeeded}</dd></div>
-                  <div><dt>Fallidos</dt><dd>{job.failed}</dd></div>
-                </dl>
-                <div className={styles.historyActions}>
-                  {job.rerunOf ? <small>Reejecución</small> : null}
-                  <button
-                    type="button"
-                    onClick={() => void handleViewDetail(job)}
-                    disabled={Boolean(loadingDetailJobId)}
-                  >
-                    {loadingDetailJobId === job.id ? "Abriendo…" : "Ver detalle"}
-                  </button>
-                  {isTerminalMdmDeviceActionJob(job) ? (
-                    <button
-                      type="button"
-                      onClick={() => void handleRerun(job)}
-                      disabled={Boolean(rerunningJobId)}
-                    >
-                      {rerunningJobId === job.id ? "Reejecutando…" : "Volver a ejecutar"}
-                    </button>
-                  ) : <small>En proceso</small>}
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
+        </main>
 
-      {jobDetail ? (
-        <section className={styles.jobDetail} aria-labelledby="action-detail-heading">
-          <div className={styles.jobDetailHeading}>
+        <aside className={styles.historyPreview} aria-labelledby="action-history-heading">
+          <div className={styles.historyPreviewHeading}>
             <div>
-              <span>DETALLE DE EJECUCIÓN</span>
-              <h2 id="action-detail-heading">
-                {jobDetail.action === "lock" ? "Bloquear" : "Desbloquear"} · {mdmDeviceActionJobLabel(jobDetail)}
-              </h2>
-              <small>{formatJobDate(jobDetail.createdAt)} · {jobDetail.branchName || "Sin sucursal"}</small>
+              <span>HISTORIAL</span>
+              <h2 id="action-history-heading">Últimas ejecuciones</h2>
             </div>
-            <button type="button" onClick={() => setJobDetail(null)}>Cerrar</button>
+            <button type="button" onClick={() => void loadJobHistory()} disabled={isLoadingHistory}>
+              {isLoadingHistory ? "Actualizando…" : "Actualizar"}
+            </button>
           </div>
-          {jobDetail.action === "lock" && jobDetail.message ? (
-            <p className={styles.detailMessage}>{jobDetail.message}</p>
-          ) : null}
-          <div className={styles.detailDevices}>
-            {jobDetail.items.map((item) => (
-              <div key={item.deviceId}>
-                <strong>{item.deviceId}</strong>
-                <span>{item.status} · intento{item.attempts === 1 ? "" : "s"} {item.attempts}</span>
-                {item.lastError ? <small>{item.lastError}</small> : null}
+          {isLoadingHistory ? (
+            <p className={styles.historyEmpty}>Cargando ejecuciones…</p>
+          ) : jobHistory.length === 0 ? (
+            <p className={styles.historyEmpty}>Todavía no hay acciones registradas.</p>
+          ) : (
+            <div className={styles.historyPreviewList}>
+              {jobHistory.slice(0, 3).map((job) => (
+                <article className={styles.historyPreviewItem} key={job.id}>
+                  <div>
+                    <strong>{job.action === "lock" ? "Bloquear" : "Desbloquear"}</strong>
+                    <small>{mdmDeviceActionJobLabel(job)} · {formatJobDate(job.createdAt)}</small>
+                  </div>
+                  <span>{job.total} equipo{job.total === 1 ? "" : "s"}</span>
+                </article>
+              ))}
+            </div>
+          )}
+          <button
+            ref={historyTriggerRef}
+            className={styles.historyPreviewLink}
+            type="button"
+            onClick={() => setIsHistoryDrawerOpen(true)}
+          >
+            Ver historial completo
+          </button>
+        </aside>
+      </div>
+
+      {isHistoryDrawerOpen ? (
+        <>
+          <button
+            className={styles.historyDrawerBackdrop}
+            type="button"
+            onClick={closeHistoryDrawer}
+            aria-label="Cerrar historial de ejecuciones"
+          />
+          <aside
+            className={`${styles.historyDrawer} ${
+              jobDetail ? styles.historyDrawerDetail : ""
+            }`}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="all-action-history-heading"
+          >
+            <div className={styles.historyDrawerHeader}>
+              <div>
+                <span>{jobDetail ? "DETALLE DE EJECUCIÓN" : "HISTORIAL"}</span>
+                <h2 id="all-action-history-heading">
+                  {jobDetail
+                    ? `${jobDetail.action === "lock" ? "Bloquear" : "Desbloquear"} · ${mdmDeviceActionJobLabel(jobDetail)}`
+                    : "Todas las ejecuciones"}
+                </h2>
+                {jobDetail ? (
+                  <small>{formatJobDate(jobDetail.createdAt)} · {jobDetail.branchName || "Sin sucursal"}</small>
+                ) : null}
               </div>
-            ))}
-          </div>
-        </section>
+              <button
+                ref={historyCloseButtonRef}
+                type="button"
+                onClick={closeHistoryDrawer}
+                aria-label="Cerrar historial"
+              >
+                Cerrar
+              </button>
+            </div>
+            {jobDetail ? (
+              <>
+                <div className={styles.detailActions}>
+                  <button
+                    ref={historyBackButtonRef}
+                    type="button"
+                    onClick={returnToHistory}
+                  >
+                    ← Volver a ejecuciones
+                  </button>
+                  <button type="button" onClick={() => downloadActionJobSummary(jobDetail)}>
+                    Descargar Excel
+                  </button>
+                </div>
+                <section className={`${styles.jobProgress} ${styles.detailJobProgress}`}>
+                  <div className={styles.jobProgressHeading}>
+                    <div>
+                      <span>{jobDetail.action === "lock" ? <LockIcon /> : <UnlockIcon />}</span>
+                      <div>
+                        <small>RESUMEN DE EJECUCIÓN</small>
+                        <strong>{mdmDeviceActionJobLabel(jobDetail)}</strong>
+                      </div>
+                    </div>
+                    <small>{jobDetail.id}</small>
+                  </div>
+                  <progress
+                    max={Math.max(jobDetail.total, 1)}
+                    value={Math.min(jobDetail.succeeded + jobDetail.failed, jobDetail.total)}
+                  />
+                  <div className={styles.jobStats}>
+                    <div><span>Total</span><strong>{jobDetail.total}</strong></div>
+                    <div><span>Pendientes</span><strong>{jobDetail.pending}</strong></div>
+                    <div><span>Completados</span><strong>{jobDetail.succeeded}</strong></div>
+                    <div><span>Fallidos</span><strong>{jobDetail.failed}</strong></div>
+                  </div>
+                </section>
+                {jobDetail.action === "lock" && jobDetail.message ? (
+                  <p className={styles.detailMessage}>{jobDetail.message}</p>
+                ) : null}
+                <div className={styles.detailDevices}>
+                  {jobDetail.items.map((item) => (
+                    <div key={item.deviceId}>
+                      <strong>{item.deviceId}</strong>
+                      <span>
+                        {mdmDeviceActionJobItemLabel(item.status)} · intento{item.attempts === 1 ? "" : "s"} {item.attempts}
+                      </span>
+                      {item.lastError ? <small>{item.lastError}</small> : null}
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <button
+                  className={styles.historyRefreshButton}
+                  type="button"
+                  onClick={() => void loadJobHistory()}
+                  disabled={isLoadingHistory}
+                >
+                  {isLoadingHistory ? "Actualizando…" : "Actualizar historial"}
+                </button>
+                {isLoadingHistory ? (
+                  <p className={styles.historyEmpty}>Cargando ejecuciones…</p>
+                ) : jobHistory.length === 0 ? (
+                  <p className={styles.historyEmpty}>Todavía no hay acciones registradas.</p>
+                ) : (
+                  <div className={styles.historyDrawerList}>
+                    {jobHistory.map((job) => (
+                      <article className={styles.historyDrawerItem} key={job.id}>
+                        <div>
+                          <strong>{job.action === "lock" ? "Bloquear" : "Desbloquear"} · {mdmDeviceActionJobLabel(job)}</strong>
+                          <small>{formatJobDate(job.createdAt)} · {job.branchName || "Sin sucursal"}</small>
+                        </div>
+                        <dl>
+                          <div><dt>Equipos</dt><dd>{job.total}</dd></div>
+                          <div><dt>Completados</dt><dd>{job.succeeded}</dd></div>
+                          <div><dt>Fallidos</dt><dd>{job.failed}</dd></div>
+                        </dl>
+                        <div className={styles.historyDrawerActions}>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              detailTriggerRef.current = event.currentTarget;
+                              void handleViewDetail(job);
+                            }}
+                            disabled={Boolean(loadingDetailJobId)}
+                          >
+                            {loadingDetailJobId === job.id ? "Abriendo…" : "Ver detalle"}
+                          </button>
+                          {isTerminalMdmDeviceActionJob(job) ? (
+                            <button
+                              type="button"
+                              onClick={() => void handleRerun(job)}
+                              disabled={Boolean(rerunningJobId)}
+                            >
+                              {rerunningJobId === job.id ? "Reejecutando…" : "Reejecutar"}
+                            </button>
+                          ) : null}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </aside>
+        </>
       ) : null}
 
       <section className={styles.activity}>

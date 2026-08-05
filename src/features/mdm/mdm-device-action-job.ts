@@ -131,3 +131,15 @@ export function mdmDeviceActionJobLabel(job: MdmDeviceActionJob) {
   if (job.status === "PARTIAL_SUCCESS") return "Completado con errores";
   return "Fallido";
 }
+
+export function mdmDeviceActionJobItemLabel(status: string) {
+  const labels: Record<string, string> = {
+    PENDING: "Pendiente",
+    PROCESSING: "Procesando",
+    SUCCEEDED: "Completado",
+    NOT_FOUND: "No encontrado",
+    FAILED: "Fallido",
+  };
+
+  return labels[status] ?? status;
+}
