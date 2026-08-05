@@ -463,53 +463,6 @@
   box-shadow: 0 0 0 3px rgba(255, 94, 43, 0.16);
 }
 
-.healthList {
-  display: grid;
-  gap: 5px;
-}
-
-.healthPill {
-  display: flex;
-  width: fit-content;
-  align-items: center;
-  gap: 6px;
-  color: #888;
-  font-size: 9px;
-  white-space: nowrap;
-}
-
-.healthPill i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #b8b8b8;
-}
-
-.healthPill--neutral i {
-  background: #b8b8b8;
-}
-
-.healthPill--good i {
-  background: var(--success);
-  box-shadow: 0 0 0 3px rgba(104, 165, 109, 0.1);
-}
-
-.healthPill--warning i {
-  background: #e8a536;
-  box-shadow: 0 0 0 3px rgba(232, 165, 54, 0.1);
-}
-
-.healthPill--bad i {
-  background: var(--error);
-  box-shadow: 0 0 0 3px rgba(179, 4, 17, 0.08);
-}
-
-.lastActive {
-  color: #737373;
-  font-size: 10px;
-  white-space: nowrap;
-}
-
 .deviceStatus {
   display: inline-flex;
   align-items: center;
@@ -527,12 +480,12 @@
   border-radius: 50%;
 }
 
-.deviceStatus--free {
+.deviceStatus--unlocked {
   color: #4f8053;
   background: rgba(104, 165, 109, 0.11);
 }
 
-.deviceStatus--free > span {
+.deviceStatus--unlocked > span {
   background: var(--success);
 }
 
@@ -543,6 +496,15 @@
 
 .deviceStatus--locked > span {
   background: var(--brand-orange);
+}
+
+.deviceStatus--unknown {
+  color: #737373;
+  background: #efefef;
+}
+
+.deviceStatus--unknown > span {
+  background: #a8a8a8;
 }
 
 .deviceStatus--missing {

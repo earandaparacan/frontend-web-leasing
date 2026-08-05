@@ -21,12 +21,8 @@ type Device = {
   config_name?: string;
   groups?: string;
   group_name?: string;
-  last_active?: string;
-  status?: string;
   description?: string;
-  permissions?: number[] | null;
-  files_status?: string | null;
-  apps_status?: string | null;
+  lock_status?: "LOCKED" | "UNLOCKED" | "UNKNOWN";
   found: boolean;
   error?: string;
 };
@@ -121,28 +117,6 @@ function isMdmBranch(value: unknown): value is MdmBranch {
 
 function parseIdentifiers(value: string) {
   return [...new Set(value.split(/[\r\n,;\t]+/).map((item) => item.trim()).filter(Boolean))];
-}
-
-function statusTone(status?: string | null) {
-  const normalized = status?.toUpperCase() ?? "";
-
-  if (["SUCCESS", "UP_TO_DATE"].includes(normalized)) return "good";
-  if (["PENDING", "PENDING_DOWNLOAD"].includes(normalized)) return "warning";
-  if (!normalized) return "neutral";
-  return "bad";
-}
-
-function statusLabel(status?: string | null) {
-  if (!status) return "Sin datos";
-
-  const labels: Record<string, string> = {
-    SUCCESS: "Al día",
-    UP_TO_DATE: "Al día",
-    PENDING: "Pendiente",
-    PENDING_DOWNLOAD: "Pendiente",
-  };
-
-  return labels[status.toUpperCase()] ?? "Revisar";
 }
 
 function formatJobDate(value: string) {
@@ -882,8 +856,6 @@ export function DeviceManagement() {
                   </th>
                   <th>Equipo</th>
                   <th>Asignación</th>
-                  <th>Salud MDM</th>
-                  <th>Última conexión</th>
                   <th>Estado</th>
                 </tr>
               </thead>
@@ -1246,16 +1218,18 @@ function DeviceRow({ device, checked, onToggle }: { device: Device; checked: boo
           <strong>{device.device_id}</strong>
           <small>{device.error ?? "No registrado en el servidor MDM"}</small>
         </td>
-        <td colSpan={3}>El dispositivo no está disponible para ejecutar acciones.</td>
+        <td colSpan={1}>El dispositivo no está disponible para ejecutar acciones.</td>
         <td><span className={`${styles.deviceStatus} ${styles["deviceStatus--missing"]}`}>Inexistente</span></td>
       </tr>
     );
   }
 
-  const locked = device.status?.toLowerCase() === "bloqueado";
-  const permissionCount = Array.isArray(device.permissions)
-    ? device.permissions.slice(0, 3).filter((permission) => permission === 1).length
-    : null;
+  const lockStatus = device.lock_status ?? "UNKNOWN";
+  const lockStatusLabel = {
+    LOCKED: "Bloqueado",
+    UNLOCKED: "Desbloqueado",
+    UNKNOWN: "Sin información",
+  }[lockStatus];
 
   return (
     <tr className={checked ? styles.selectedRow : undefined}>
@@ -1272,16 +1246,8 @@ function DeviceRow({ device, checked, onToggle }: { device: Device; checked: boo
         <small>{device.groups || device.group_name || "Sin grupo"}</small>
       </td>
       <td>
-        <div className={styles.healthList}>
-          <HealthPill tone={permissionCount === 3 ? "good" : permissionCount === null ? "neutral" : "bad"} label={permissionCount === null ? "Permisos —" : `Permisos ${permissionCount}/3`} />
-          <HealthPill tone={statusTone(device.apps_status)} label={`Apps ${statusLabel(device.apps_status)}`} />
-          <HealthPill tone={statusTone(device.files_status)} label={`Archivos ${statusLabel(device.files_status)}`} />
-        </div>
-      </td>
-      <td><span className={styles.lastActive}>{device.last_active || "Sin datos"}</span></td>
-      <td>
-        <span className={`${styles.deviceStatus} ${locked ? styles["deviceStatus--locked"] : styles["deviceStatus--free"]}`}>
-          <span />{locked ? "Bloqueado" : "Libre"}
+        <span className={`${styles.deviceStatus} ${styles[`deviceStatus--${lockStatus.toLowerCase()}`]}`}>
+          <span />{lockStatusLabel}
         </span>
       </td>
     </tr>
@@ -1295,10 +1261,6 @@ function SelectionCheckbox({ checked, onChange, label }: { checked: boolean; onC
       <span><CheckIcon /></span>
     </label>
   );
-}
-
-function HealthPill({ tone, label }: { tone: string; label: string }) {
-  return <span className={`${styles.healthPill} ${styles[`healthPill--${tone}`]}`}><i />{label}</span>;
 }
 
 function SearchIcon() {
