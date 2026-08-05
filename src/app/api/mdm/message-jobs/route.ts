@@ -4,6 +4,7 @@ import { forwardMdmRequest, getMdmMessageJobsUrl } from "@/lib/mdm-backend";
 type CreateMessageJobPayload = {
   devices?: unknown;
   message?: unknown;
+  branch_id?: unknown;
 };
 
 function validIdentifier(value: unknown): value is string {
@@ -36,6 +37,16 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+  if (
+    typeof payload.branch_id !== "number" ||
+    !Number.isSafeInteger(payload.branch_id) ||
+    payload.branch_id <= 0
+  ) {
+    return Response.json(
+      { status: "error", message: "Seleccioná una sucursal válida." },
+      { status: 400 },
+    );
+  }
 
   if (
     !Array.isArray(payload.devices) ||
@@ -55,9 +66,13 @@ export async function POST(request: Request) {
 
   return forwardMdmRequest(
     getMdmMessageJobsUrl(),
-    { devices, message: payload.message.trim() },
+    { devices, message: payload.message.trim(), branch_id: payload.branch_id },
     30_000,
     "POST",
     { "Idempotency-Key": idempotencyKey(request) },
   );
+}
+
+export async function GET() {
+  return forwardMdmRequest(getMdmMessageJobsUrl(), undefined, 30_000, "GET");
 }

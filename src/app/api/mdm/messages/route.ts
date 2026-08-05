@@ -5,6 +5,7 @@ type MessagePayload = {
   group_id?: unknown;
   devices?: unknown;
   message?: unknown;
+  branch_id?: unknown;
 };
 
 export async function POST(request: Request) {
@@ -28,6 +29,16 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+  if (
+    typeof payload.branch_id !== "number" ||
+    !Number.isSafeInteger(payload.branch_id) ||
+    payload.branch_id <= 0
+  ) {
+    return Response.json(
+      { status: "error", message: "Seleccioná una sucursal válida." },
+      { status: 400 },
+    );
+  }
 
   if (payload.scope === "all") {
     return forwardMdmRequest(
@@ -35,6 +46,7 @@ export async function POST(request: Request) {
       {
         scope: "all",
         message: payload.message.trim(),
+        branch_id: payload.branch_id,
       },
       55_000,
     );
@@ -57,6 +69,7 @@ export async function POST(request: Request) {
         scope: "group",
         group_id: payload.group_id,
         message: payload.message.trim(),
+        branch_id: payload.branch_id,
       },
       55_000,
     );
@@ -83,5 +96,6 @@ export async function POST(request: Request) {
     scope: "devices",
     devices,
     message: payload.message.trim(),
+    branch_id: payload.branch_id,
   });
 }

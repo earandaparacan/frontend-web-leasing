@@ -4,6 +4,7 @@ import { getBackendUrl, readBackendJson } from "@/lib/backend";
 const DEFAULT_QUERY_PATH = "/api/v1/mdm/devices/query";
 const DEFAULT_ACTION_PATH = "/api/v1/mdm/devices/action";
 const DEFAULT_GROUPS_PATH = "/api/v1/mdm/groups";
+const DEFAULT_BRANCHES_PATH = "/api/v1/mdm/branches";
 const DEFAULT_MESSAGE_PATH = "/api/v1/mdm/messages";
 const DEFAULT_MESSAGE_JOBS_PATH = "/api/v1/mdm/message-jobs";
 const DEFAULT_ACTION_JOBS_PATH = "/api/v1/mdm/action-jobs";
@@ -37,14 +38,20 @@ export function getMdmMessageUrl() {
   return getBackendUrl(DEFAULT_MESSAGE_PATH);
 }
 
-export function getMdmMessageJobsUrl(jobId?: string, action?: "retry-failures") {
+export function getMdmMessageJobsUrl(
+  jobId?: string,
+  action?: "retry-failures" | "rerun",
+) {
   if (!jobId) return getBackendUrl(DEFAULT_MESSAGE_JOBS_PATH);
 
   const jobPath = `${DEFAULT_MESSAGE_JOBS_PATH}/${encodeURIComponent(jobId)}`;
   return getBackendUrl(action ? `${jobPath}/${action}` : jobPath);
 }
 
-export function getMdmActionJobsUrl(jobId?: string, action?: "retry-failures") {
+export function getMdmActionJobsUrl(
+  jobId?: string,
+  action?: "retry-failures" | "rerun",
+) {
   if (!jobId) return getBackendUrl(DEFAULT_ACTION_JOBS_PATH);
 
   const jobPath = `${DEFAULT_ACTION_JOBS_PATH}/${encodeURIComponent(jobId)}`;
@@ -57,6 +64,10 @@ export function getMdmCapabilitiesUrl() {
 
 export function getMdmGroupsUrl() {
   return getBackendUrl(DEFAULT_GROUPS_PATH);
+}
+
+export function getMdmBranchesUrl() {
+  return getBackendUrl(DEFAULT_BRANCHES_PATH);
 }
 
 export function getMdmLockTemplatesUrl() {

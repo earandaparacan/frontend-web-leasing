@@ -6,6 +6,7 @@ type CreateActionJobPayload = {
   devices?: unknown;
   action?: unknown;
   message?: unknown;
+  branch_id?: unknown;
 };
 
 function isDevice(value: unknown): value is { number: string; db_id: number } {
@@ -58,6 +59,16 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+  if (
+    typeof payload.branch_id !== "number" ||
+    !Number.isSafeInteger(payload.branch_id) ||
+    payload.branch_id <= 0
+  ) {
+    return Response.json(
+      { status: "error", message: "Seleccioná una sucursal válida." },
+      { status: 400 },
+    );
+  }
 
   const devices = Array.isArray(payload.devices) ? [
     ...new Map(
@@ -75,10 +86,15 @@ export async function POST(request: Request) {
       scope: payload.scope,
       devices,
       action: payload.action,
+      branch_id: payload.branch_id,
       message: payload.action === "lock" ? payload.message?.trim() ?? "" : "",
     },
     30_000,
     "POST",
     { "Idempotency-Key": suppliedKey || randomUUID() },
   );
+}
+
+export async function GET() {
+  return forwardMdmRequest(getMdmActionJobsUrl(), undefined, 30_000, "GET");
 }

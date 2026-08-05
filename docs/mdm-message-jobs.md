@@ -43,6 +43,8 @@ Respuesta `202`:
 
 La combinación de usuario autenticado e `Idempotency-Key` debe ser única. Una repetición devuelve el trabajo existente sin crear otro envío.
 
+Cada identificador recibido debe crear un elemento de ejecución. Antes de encolar el trabajo, el backend debe verificar los identificadores y persistir los inexistentes directamente como elementos `NOT_FOUND`, con un error explícito y sin crear solicitudes hacia Headwind. Solo los dispositivos verificados pueden llegar al worker. Ambos tipos de elemento deben figurar en el historial y en la exportación del resumen.
+
 ## Consultar progreso
 
 `GET /api/v1/mdm/message-jobs/{job_id}` devuelve la misma estructura `job`.

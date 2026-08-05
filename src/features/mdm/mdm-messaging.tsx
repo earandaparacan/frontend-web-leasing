@@ -12,9 +12,12 @@ import {
 import styles from "./mdm-messaging.module.css";
 import {
   isTerminalMessageJob,
+  messageJobItemStatusLabel,
   messageJobStatusLabel,
   parseMessageJob,
+  parseMessageJobDetail,
   type MessageJob,
+  type MessageJobDetail,
 } from "./mdm-message-job";
 
 const DEVICE_RESULTS_PAGE_SIZE = 100;
@@ -35,6 +38,11 @@ type DeviceGroup = {
   name: string;
 };
 
+type MdmBranch = {
+  id: number;
+  name: string;
+};
+
 type MdmCapabilities = {
   max_specific_devices: number;
   query_batch_size: number;
@@ -50,9 +58,11 @@ type ApiResponse = {
   error?: string;
   results?: unknown;
   groups?: unknown;
+  branches?: unknown;
   templates?: unknown;
   template?: unknown;
   job?: unknown;
+  jobs?: unknown;
   capabilities?: unknown;
 };
 
@@ -75,6 +85,18 @@ function isDeviceGroup(value: unknown): value is DeviceGroup {
     group.id > 0 &&
     typeof group.name === "string" &&
     group.name.trim().length > 0
+  );
+}
+
+function isMdmBranch(value: unknown): value is MdmBranch {
+  if (typeof value !== "object" || value === null) return false;
+  const branch = value as Record<string, unknown>;
+  return (
+    typeof branch.id === "number" &&
+    Number.isSafeInteger(branch.id) &&
+    branch.id > 0 &&
+    typeof branch.name === "string" &&
+    branch.name.trim().length > 0
   );
 }
 
@@ -107,6 +129,57 @@ function deviceBatches(identifiers: string[], batchSize: number) {
   return batches;
 }
 
+function formatJobDate(value: string) {
+  return new Intl.DateTimeFormat("es-PY", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function escapeSpreadsheetValue(value: string) {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function spreadsheetRow(values: string[]) {
+  return `<Row>${values.map((value) => `<Cell><Data ss:Type="String">${escapeSpreadsheetValue(value)}</Data></Cell>`).join("")}</Row>`;
+}
+
+function downloadJobSummary(job: MessageJobDetail) {
+  const summaryRows = [
+    ["Ejecución", job.id],
+    ["Estado", messageJobStatusLabel(job.status)],
+    ["Sucursal", job.branchName || "Sin sucursal"],
+    ["Fecha", formatJobDate(job.createdAt)],
+    ["Total", String(job.total)],
+    ["Aceptados", String(job.accepted)],
+    ["Fallidos", String(job.failed)],
+  ].map(spreadsheetRow).join("");
+  const itemRows = job.items
+    .map((item) => spreadsheetRow([
+      item.deviceId,
+      messageJobItemStatusLabel(item.status),
+      String(item.attempts),
+      item.lastError || "Sin error registrado",
+    ]))
+    .join("");
+  const spreadsheet = `<?xml version="1.0" encoding="UTF-8"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+  <Worksheet ss:Name="Resumen y detalle"><Table>
+    ${summaryRows}
+    <Row></Row>
+    ${spreadsheetRow(["IMEI / identificador", "Estado", "Intentos", "Último error"])}
+    ${itemRows}
+  </Table></Worksheet>
+</Workbook>`;
+  const blob = new Blob([spreadsheet], { type: "application/vnd.ms-excel;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `resumen-ejecucion-${job.id}.xls`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export function MdmMessaging() {
   const [targetMode, setTargetMode] = useState<"devices" | "group" | "all">("devices");
   const [input, setInput] = useState("");
@@ -114,7 +187,11 @@ export function MdmMessaging() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [groups, setGroups] = useState<DeviceGroup[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState("");
+  const [branches, setBranches] = useState<MdmBranch[]>([]);
+  const [branchId, setBranchId] = useState("");
+  const [isLoadingBranches, setIsLoadingBranches] = useState(true);
   const [message, setMessage] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState("");
   const [templates, setTemplates] = useState<string[]>([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
   const [capabilities, setCapabilities] = useState<MdmCapabilities | null>(null);
@@ -124,15 +201,55 @@ export function MdmMessaging() {
   const [isSending, setIsSending] = useState(false);
   const [isRetryingJob, setIsRetryingJob] = useState(false);
   const [activeJob, setActiveJob] = useState<MessageJob | null>(null);
+  const [jobHistory, setJobHistory] = useState<MessageJob[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [rerunningJobId, setRerunningJobId] = useState("");
+  const [jobDetail, setJobDetail] = useState<MessageJobDetail | null>(null);
+  const [loadingDetailJobId, setLoadingDetailJobId] = useState("");
+  const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
   const [visibleDeviceCount, setVisibleDeviceCount] = useState(DEVICE_RESULTS_PAGE_SIZE);
   const [notice, setNotice] = useState<{ tone: "error" | "success"; text: string } | null>(null);
   const jobRequestRef = useRef<{ signature: string; key: string } | null>(null);
+  const detailTriggerRef = useRef<HTMLButtonElement>(null);
+  const historyBackButtonRef = useRef<HTMLButtonElement>(null);
+  const historyCloseButtonRef = useRef<HTMLButtonElement>(null);
+  const historyTriggerRef = useRef<HTMLButtonElement>(null);
 
   const identifiers = useMemo(() => parseIdentifiers(input), [input]);
   const selectedDevices = devices.filter(
     (device) => device.found && selected.has(device.device_id),
   );
+  const missingDevices = devices.filter((device) => !device.found);
+  const devicesForJob = [...selectedDevices, ...missingDevices].map(
+    (device) => device.device_id,
+  );
   const selectedGroup = groups.find((group) => group.id === Number(selectedGroupId));
+
+  async function loadJobHistory() {
+    try {
+      const response = await fetch("/api/mdm/message-jobs", {
+        cache: "no-store",
+      });
+      const data = (await response.json()) as ApiResponse;
+      if (!response.ok || data.status !== "success" || !Array.isArray(data.jobs)) {
+        throw new Error(responseMessage(data));
+      }
+      const parsedJobs = data.jobs.map(parseMessageJob);
+      if (parsedJobs.some((job) => job === null)) {
+        throw new Error("El historial de envíos contiene datos incompletos.");
+      }
+      setJobHistory(
+        parsedJobs.filter((job): job is MessageJob => job !== null),
+      );
+    } catch (error) {
+      setNotice({
+        tone: "error",
+        text: error instanceof Error ? error.message : "No se pudo cargar el historial.",
+      });
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -166,6 +283,44 @@ export function MdmMessaging() {
     }
 
     void loadTemplates();
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    void loadJobHistory();
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadBranches() {
+      try {
+        const response = await fetch("/api/mdm/branches", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const data = (await response.json()) as ApiResponse;
+        if (
+          !response.ok ||
+          data.status !== "success" ||
+          !Array.isArray(data.branches) ||
+          !data.branches.every(isMdmBranch)
+        ) {
+          throw new Error(responseMessage(data));
+        }
+        setBranches(data.branches);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        setNotice({
+          tone: "error",
+          text: error instanceof Error ? error.message : "No se pudieron cargar las sucursales.",
+        });
+      } finally {
+        if (!controller.signal.aborted) setIsLoadingBranches(false);
+      }
+    }
+
+    void loadBranches();
     return () => controller.abort();
   }, []);
 
@@ -224,6 +379,24 @@ export function MdmMessaging() {
   }, [activeJob]);
 
   useEffect(() => {
+    if (jobDetail) historyBackButtonRef.current?.focus();
+  }, [jobDetail]);
+
+  useEffect(() => {
+    if (!isHistoryDrawerOpen) return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setIsHistoryDrawerOpen(false);
+      window.setTimeout(() => historyTriggerRef.current?.focus(), 0);
+    }
+
+    historyCloseButtonRef.current?.focus();
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isHistoryDrawerOpen]);
+
+  useEffect(() => {
     if (!activeJob || isTerminalMessageJob(activeJob)) return;
 
     const jobId = activeJob.id;
@@ -246,6 +419,7 @@ export function MdmMessaging() {
         }
 
         setActiveJob(job);
+        void loadJobHistory();
         if (job.status === "SUCCEEDED") {
           continuePolling = false;
           setNotice({ tone: "success", text: "Headwind aceptó todos los mensajes del envío." });
@@ -282,6 +456,21 @@ export function MdmMessaging() {
     setDevices([]);
     setSelected(new Set());
     setVisibleDeviceCount(DEVICE_RESULTS_PAGE_SIZE);
+  }
+
+  function handleClearForm() {
+    setTargetMode("devices");
+    setInput("");
+    setDevices([]);
+    setSelected(new Set());
+    setSelectedGroupId("");
+    setBranchId("");
+    setMessage("");
+    setSelectedTemplate("");
+    setActiveJob(null);
+    setNotice(null);
+    setVisibleDeviceCount(DEVICE_RESULTS_PAGE_SIZE);
+    jobRequestRef.current = null;
   }
 
   async function handleDeviceFile(event: ChangeEvent<HTMLInputElement>) {
@@ -426,6 +615,7 @@ export function MdmMessaging() {
   }
 
   function handleTemplateChange(value: string) {
+    setSelectedTemplate(value);
     if (!value) return;
     setMessage(value);
     setNotice(null);
@@ -478,14 +668,19 @@ export function MdmMessaging() {
   async function handleSend(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const cleanMessage = message.trim();
+    const selectedBranchId = Number(branchId);
 
     if (!capabilities) {
       setNotice({ tone: "error", text: "La configuración MDM todavía está cargando." });
       return;
     }
+    if (!Number.isSafeInteger(selectedBranchId) || selectedBranchId <= 0) {
+      setNotice({ tone: "error", text: "Seleccioná una sucursal antes de enviar." });
+      return;
+    }
 
-    if (targetMode === "devices" && selectedDevices.length === 0) {
-      setNotice({ tone: "error", text: "Seleccioná al menos un dispositivo verificado." });
+    if (targetMode === "devices" && devicesForJob.length === 0) {
+      setNotice({ tone: "error", text: "Verificá al menos un identificador antes de enviar." });
       return;
     }
     if (targetMode === "group" && !selectedGroup) {
@@ -517,7 +712,11 @@ export function MdmMessaging() {
     if (
       targetMode === "devices" &&
       !window.confirm(
-        `¿Confirmás el envío en segundo plano a ${selectedDevices.length} dispositivos?`,
+        `¿Confirmás el envío en segundo plano a ${devicesForJob.length} identificadores${
+          missingDevices.length > 0
+            ? `? ${missingDevices.length} se registrará${missingDevices.length === 1 ? "" : "n"} como no encontrado${missingDevices.length === 1 ? "" : "s"} sin enviarlo${missingDevices.length === 1 ? "" : "s"} a Headwind.`
+            : "?"
+        }`,
       )
     ) {
       return;
@@ -528,8 +727,7 @@ export function MdmMessaging() {
 
     try {
       if (targetMode === "devices") {
-        const jobDevices = selectedDevices.map((device) => device.device_id);
-        const signature = `${cleanMessage}\u0000${jobDevices.join("\u0000")}`;
+        const signature = `${cleanMessage}\u0000${devicesForJob.join("\u0000")}`;
         if (jobRequestRef.current?.signature !== signature) {
           jobRequestRef.current = { signature, key: crypto.randomUUID() };
         }
@@ -541,8 +739,9 @@ export function MdmMessaging() {
             "Idempotency-Key": jobRequestRef.current.key,
           },
           body: JSON.stringify({
-            devices: jobDevices,
+            devices: devicesForJob,
             message: cleanMessage,
+            branch_id: selectedBranchId,
           }),
         });
         const data = (await response.json()) as ApiResponse;
@@ -552,8 +751,10 @@ export function MdmMessaging() {
         }
 
         setActiveJob(job);
+        void loadJobHistory();
         jobRequestRef.current = null;
         setMessage("");
+        setSelectedTemplate("");
         setNotice({
           tone: "success",
           text: `Envío ${job.id} creado. Podés seguir el progreso sin mantener esta solicitud abierta.`,
@@ -566,8 +767,13 @@ export function MdmMessaging() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
           targetMode === "all"
-            ? { scope: "all", message: cleanMessage }
-            : { scope: "group", group_id: selectedGroup?.id, message: cleanMessage },
+            ? { scope: "all", message: cleanMessage, branch_id: selectedBranchId }
+            : {
+                scope: "group",
+                group_id: selectedGroup?.id,
+                message: cleanMessage,
+                branch_id: selectedBranchId,
+              },
         ),
       });
       const data = (await response.json()) as ApiResponse;
@@ -575,6 +781,7 @@ export function MdmMessaging() {
         throw new Error(responseMessage(data));
       }
       setMessage("");
+      setSelectedTemplate("");
       setNotice({
         tone: "success",
         text: "Mensaje aceptado por Headwind.",
@@ -605,6 +812,7 @@ export function MdmMessaging() {
         throw new Error(responseMessage(data));
       }
       setActiveJob(job);
+      void loadJobHistory();
       setNotice({ tone: "success", text: "Los errores transitorios volvieron a la cola." });
     } catch (error) {
       setNotice({
@@ -614,6 +822,71 @@ export function MdmMessaging() {
     } finally {
       setIsRetryingJob(false);
     }
+  }
+
+  async function handleRerun(job: MessageJob) {
+    if (!isTerminalMessageJob(job) || rerunningJobId) return;
+    if (!window.confirm("¿Volvés a ejecutar este envío con los mismos dispositivos?")) {
+      return;
+    }
+
+    setRerunningJobId(job.id);
+    setNotice(null);
+    try {
+      const response = await fetch(
+        `/api/mdm/message-jobs/${encodeURIComponent(job.id)}/rerun`,
+        { method: "POST" },
+      );
+      const data = (await response.json()) as ApiResponse;
+      const rerun = parseMessageJob(data);
+      if (!response.ok || data.status !== "success" || !rerun) {
+        throw new Error(responseMessage(data));
+      }
+      setActiveJob(rerun);
+      setJobHistory((current) => [rerun, ...current]);
+      setNotice({ tone: "success", text: "El envío volvió a quedar en cola." });
+    } catch (error) {
+      setNotice({
+        tone: "error",
+        text: error instanceof Error ? error.message : "No se pudo volver a ejecutar el envío.",
+      });
+    } finally {
+      setRerunningJobId("");
+    }
+  }
+
+  async function handleViewDetail(job: MessageJob) {
+    setLoadingDetailJobId(job.id);
+    try {
+      const response = await fetch(
+        `/api/mdm/message-jobs/${encodeURIComponent(job.id)}`,
+        { cache: "no-store" },
+      );
+      const data = (await response.json()) as ApiResponse;
+      const detail = parseMessageJobDetail(data);
+      if (!response.ok || data.status !== "success" || !detail) {
+        throw new Error(responseMessage(data));
+      }
+      setJobDetail(detail);
+    } catch (error) {
+      setNotice({
+        tone: "error",
+        text: error instanceof Error ? error.message : "No se pudo cargar el detalle del envío.",
+      });
+    } finally {
+      setLoadingDetailJobId("");
+    }
+  }
+
+  function returnToHistory() {
+    setJobDetail(null);
+    window.setTimeout(() => detailTriggerRef.current?.focus(), 0);
+  }
+
+  function closeHistoryDrawer() {
+    setJobDetail(null);
+    setIsHistoryDrawerOpen(false);
+    window.setTimeout(() => historyTriggerRef.current?.focus(), 0);
   }
 
   return (
@@ -637,13 +910,24 @@ export function MdmMessaging() {
       </header>
 
       <div className={styles.layout}>
-        <section className={styles.card} aria-labelledby="message-heading">
+        <div className={styles.mainColumn}>
+          <section className={styles.card} aria-labelledby="message-heading">
           <div className={styles.cardHeader}>
             <div>
               <span>NUEVO MENSAJE</span>
               <h2 id="message-heading">Preparar envío</h2>
             </div>
-            <span className={styles.secureBadge}><ShieldIcon /> Canal protegido</span>
+            <div className={styles.cardHeaderActions}>
+              <button
+                className={styles.clearFormButton}
+                type="button"
+                onClick={handleClearForm}
+                disabled={isVerifying || isSending || isSavingTemplate || isRetryingJob}
+              >
+                Limpiar formulario
+              </button>
+              <span className={styles.secureBadge}><ShieldIcon /> Canal protegido</span>
+            </div>
           </div>
 
           <div className={styles.cardBody}>
@@ -686,6 +970,28 @@ export function MdmMessaging() {
               >
                 Todos los dispositivos
               </button>
+            </div>
+
+            <div className={styles.groupTarget}>
+              <label>
+                <span>Sucursal</span>
+                <select
+                  value={branchId}
+                  onChange={(event) => {
+                    setBranchId(event.target.value);
+                    setNotice(null);
+                  }}
+                  disabled={isLoadingBranches || isSending}
+                >
+                  <option value="">
+                    {isLoadingBranches ? "Cargando sucursales…" : "Seleccionar sucursal"}
+                  </option>
+                  {branches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>{branch.name}</option>
+                  ))}
+                </select>
+              </label>
+              <small>La sucursal queda registrada en la ejecución del envío.</small>
             </div>
 
             {targetMode === "devices" ? (
@@ -783,6 +1089,11 @@ export function MdmMessaging() {
                       <span>
                         {selectedDevices.length} dispositivo{selectedDevices.length === 1 ? "" : "s"} seleccionado{selectedDevices.length === 1 ? "" : "s"}
                       </span>
+                      {missingDevices.length > 0 ? (
+                        <strong>
+                          {missingDevices.length} no encontrado{missingDevices.length === 1 ? "" : "s"}: se registrar{missingDevices.length === 1 ? "á" : "án"} sin enviarlo{missingDevices.length === 1 ? "" : "s"} a Headwind
+                        </strong>
+                      ) : null}
                       <button type="button" onClick={() => setSelected(new Set())} disabled={isSending}>
                         Quitar selección
                       </button>
@@ -845,7 +1156,7 @@ export function MdmMessaging() {
                 <label>
                   <span>Plantilla</span>
                   <select
-                    defaultValue=""
+                    value={selectedTemplate}
                     onChange={(event) => handleTemplateChange(event.target.value)}
                     disabled={isLoadingTemplates || templates.length === 0 || isSending}
                   >
@@ -935,9 +1246,10 @@ export function MdmMessaging() {
                 className={styles.sendButton}
                 type="submit"
                 disabled={
-                  (targetMode === "devices" && selectedDevices.length === 0) ||
+                  (targetMode === "devices" && devicesForJob.length === 0) ||
                   (targetMode === "group" && !selectedGroup) ||
                   !message.trim() ||
+                  !branchId ||
                   isSending ||
                   isVerifying ||
                   isLoadingGroups ||
@@ -953,27 +1265,211 @@ export function MdmMessaging() {
                     ? "Enviar a todos los dispositivos"
                     : targetMode === "group"
                       ? `Enviar al grupo${selectedGroup ? ` ${selectedGroup.name}` : ""}`
-                      : `Enviar a ${selectedDevices.length} dispositivo${selectedDevices.length === 1 ? "" : "s"}`}
+                      : `Registrar envío a ${devicesForJob.length} identificador${devicesForJob.length === 1 ? "" : "es"}`}
               </button>
             </form>
           </div>
-        </section>
+          </section>
 
-        <aside className={styles.helpCard}>
-          <div className={styles.helpIcon}><ShieldIcon /></div>
-          <span>ENVÍO SEGURO</span>
-          <h2>Cómo funciona</h2>
-          <ol>
-            <li><i>1</i><p><strong>Verificación</strong><small>Confirmamos que los equipos existen en Headwind MDM.</small></p></li>
-            <li><i>2</i><p><strong>Envío interno</strong><small>Django autentica la solicitud sin compartir secretos con la web.</small></p></li>
-            <li><i>3</i><p><strong>Entrega por MQTT</strong><small>Headwind remite el aviso al agente instalado.</small></p></li>
-          </ol>
-          <div className={styles.helpNote}>
-            <MessageIcon />
-            <p><strong>Antes de enviar</strong><span>Revisá los dispositivos y el contenido. El envío queda auditado.</span></p>
-          </div>
+        </div>
+
+        <aside className={styles.sidebar}>
+          <section className={styles.historyPreview} aria-labelledby="message-history-heading">
+            <div className={styles.historyPreviewHeading}>
+              <div>
+                <span>HISTORIAL</span>
+                <h2 id="message-history-heading">Últimas ejecuciones</h2>
+              </div>
+              <button type="button" onClick={() => void loadJobHistory()} disabled={isLoadingHistory}>
+                {isLoadingHistory ? "Actualizando…" : "Actualizar"}
+              </button>
+            </div>
+            {isLoadingHistory ? (
+              <p className={styles.historyEmpty}>Cargando ejecuciones…</p>
+            ) : jobHistory.length === 0 ? (
+              <p className={styles.historyEmpty}>Todavía no hay envíos registrados.</p>
+            ) : (
+              <div className={styles.historyPreviewList}>
+                {jobHistory.slice(0, 3).map((job) => (
+                  <article className={styles.historyPreviewItem} key={job.id}>
+                    <div>
+                      <strong>{messageJobStatusLabel(job.status)}</strong>
+                      <small>{formatJobDate(job.createdAt)}</small>
+                    </div>
+                    <span>{job.total} equipo{job.total === 1 ? "" : "s"}</span>
+                  </article>
+                ))}
+              </div>
+            )}
+            <button
+              ref={historyTriggerRef}
+              className={styles.historyPreviewLink}
+              type="button"
+              onClick={() => setIsHistoryDrawerOpen(true)}
+            >
+              Ver historial completo
+            </button>
+          </section>
+
+          <section className={styles.helpCard}>
+            <div className={styles.helpIcon}><ShieldIcon /></div>
+            <span>ENVÍO SEGURO</span>
+            <h2>Siempre protegido</h2>
+            <ol>
+              <li><i>1</i><p><strong>Verificación</strong><small>Confirmamos que los equipos existen en Headwind MDM.</small></p></li>
+              <li><i>2</i><p><strong>Envío interno</strong><small>Django autentica la solicitud sin compartir secretos con la web.</small></p></li>
+              <li><i>3</i><p><strong>Entrega por MQTT</strong><small>Headwind remite el aviso al agente instalado.</small></p></li>
+            </ol>
+            <div className={styles.helpNote}>
+              <MessageIcon />
+              <p><strong>Antes de enviar</strong><span>Revisá los dispositivos y el contenido. El envío queda auditado.</span></p>
+            </div>
+          </section>
         </aside>
       </div>
+
+      {isHistoryDrawerOpen ? (
+        <>
+          <button
+            className={styles.detailDrawerBackdrop}
+            type="button"
+            onClick={closeHistoryDrawer}
+            aria-label="Cerrar historial de ejecuciones"
+          />
+          <aside
+            className={`${styles.historyDrawer} ${
+              jobDetail ? styles.historyDrawerDetail : ""
+            }`}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="all-message-history-heading"
+          >
+            <div className={styles.detailDrawerHeader}>
+              <div>
+                <span>{jobDetail ? "DETALLE DE EJECUCIÓN" : "HISTORIAL"}</span>
+                <h2 id="all-message-history-heading">
+                  {jobDetail ? messageJobStatusLabel(jobDetail.status) : "Todas las ejecuciones"}
+                </h2>
+                {jobDetail ? (
+                  <small>{formatJobDate(jobDetail.createdAt)} · {jobDetail.branchName || "Sin sucursal"}</small>
+                ) : null}
+              </div>
+              <button
+                ref={historyCloseButtonRef}
+                type="button"
+                onClick={closeHistoryDrawer}
+                aria-label="Cerrar historial"
+              >
+                Cerrar
+              </button>
+            </div>
+            {jobDetail ? (
+              <>
+                <div className={styles.detailActions}>
+                  <button
+                    ref={historyBackButtonRef}
+                    className={styles.historyDrawerRefresh}
+                    type="button"
+                    onClick={returnToHistory}
+                  >
+                    ← Volver a ejecuciones
+                  </button>
+                  <button
+                    className={styles.downloadSummaryButton}
+                    type="button"
+                    onClick={() => downloadJobSummary(jobDetail)}
+                  >
+                    Descargar Excel
+                  </button>
+                </div>
+                <p className={styles.detailMessage}>{jobDetail.message}</p>
+                <section className={`${styles.jobProgress} ${styles.detailJobProgress}`}>
+                  <div className={styles.jobProgressHeading}>
+                    <div>
+                      <span>RESUMEN DE EJECUCIÓN</span>
+                      <strong>{messageJobStatusLabel(jobDetail.status)}</strong>
+                    </div>
+                    <small>{jobDetail.id}</small>
+                  </div>
+                  <progress
+                    max={Math.max(jobDetail.total, 1)}
+                    value={Math.min(jobDetail.accepted + jobDetail.failed, jobDetail.total)}
+                  />
+                  <dl>
+                    <div><dt>Total</dt><dd>{jobDetail.total}</dd></div>
+                    <div><dt>Pendientes</dt><dd>{jobDetail.pending}</dd></div>
+                    <div><dt>Aceptados</dt><dd>{jobDetail.accepted}</dd></div>
+                    <div><dt>Fallidos</dt><dd>{jobDetail.failed}</dd></div>
+                  </dl>
+                </section>
+                <div className={styles.detailDevices}>
+                  {jobDetail.items.map((item) => (
+                    <div key={item.deviceId}>
+                      <strong>{item.deviceId}</strong>
+                      <span>{messageJobItemStatusLabel(item.status)} · intento{item.attempts === 1 ? "" : "s"} {item.attempts}</span>
+                      {item.lastError ? <small>{item.lastError}</small> : null}
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <button
+                  className={styles.historyDrawerRefresh}
+                  type="button"
+                  onClick={() => void loadJobHistory()}
+                  disabled={isLoadingHistory}
+                >
+                  {isLoadingHistory ? "Actualizando…" : "Actualizar historial"}
+                </button>
+                {isLoadingHistory ? (
+                  <p className={styles.historyEmpty}>Cargando ejecuciones…</p>
+                ) : jobHistory.length === 0 ? (
+                  <p className={styles.historyEmpty}>Todavía no hay envíos registrados.</p>
+                ) : (
+                  <div className={styles.historyDrawerList}>
+                    {jobHistory.map((job) => (
+                      <article className={styles.historyDrawerItem} key={job.id}>
+                        <div>
+                          <strong>{messageJobStatusLabel(job.status)}</strong>
+                          <small>{formatJobDate(job.createdAt)} · {job.branchName || "Sin sucursal"}</small>
+                        </div>
+                        <dl>
+                          <div><dt>Equipos</dt><dd>{job.total}</dd></div>
+                          <div><dt>Aceptados</dt><dd>{job.accepted}</dd></div>
+                          <div><dt>Fallidos</dt><dd>{job.failed}</dd></div>
+                        </dl>
+                        <div className={styles.historyActions}>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              detailTriggerRef.current = event.currentTarget;
+                              void handleViewDetail(job);
+                            }}
+                            disabled={Boolean(loadingDetailJobId)}
+                          >
+                            {loadingDetailJobId === job.id ? "Abriendo…" : "Ver detalle"}
+                          </button>
+                          {isTerminalMessageJob(job) ? (
+                            <button
+                              type="button"
+                              onClick={() => void handleRerun(job)}
+                              disabled={Boolean(rerunningJobId)}
+                            >
+                              {rerunningJobId === job.id ? "Reejecutando…" : "Reejecutar"}
+                            </button>
+                          ) : null}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </aside>
+        </>
+      ) : null}
+
     </div>
   );
 }

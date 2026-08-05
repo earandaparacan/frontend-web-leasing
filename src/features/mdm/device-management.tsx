@@ -6,7 +6,9 @@ import {
   isTerminalMdmDeviceActionJob,
   mdmDeviceActionJobLabel,
   parseMdmDeviceActionJob,
+  parseMdmDeviceActionJobDetail,
   type MdmDeviceActionJob,
+  type MdmDeviceActionJobDetail,
 } from "./mdm-device-action-job";
 import styles from "./device-management.module.css";
 
@@ -56,6 +58,25 @@ type TemplateResponse = {
   error?: string;
 };
 
+type ActionJobHistoryResponse = {
+  status?: string;
+  jobs?: unknown;
+  message?: string;
+  error?: string;
+};
+
+type MdmBranch = {
+  id: number;
+  name: string;
+};
+
+type BranchResponse = {
+  status?: string;
+  branches?: unknown;
+  message?: string;
+  error?: string;
+};
+
 type LogEntry = {
   id: string;
   time: string;
@@ -85,6 +106,18 @@ function isDevice(value: unknown): value is Device {
   );
 }
 
+function isMdmBranch(value: unknown): value is MdmBranch {
+  if (typeof value !== "object" || value === null) return false;
+  const branch = value as Record<string, unknown>;
+  return (
+    typeof branch.id === "number" &&
+    Number.isSafeInteger(branch.id) &&
+    branch.id > 0 &&
+    typeof branch.name === "string" &&
+    branch.name.trim().length > 0
+  );
+}
+
 function parseIdentifiers(value: string) {
   return [...new Set(value.split(/[\r\n,;\t]+/).map((item) => item.trim()).filter(Boolean))];
 }
@@ -111,6 +144,13 @@ function statusLabel(status?: string | null) {
   return labels[status.toUpperCase()] ?? "Revisar";
 }
 
+function formatJobDate(value: string) {
+  return new Intl.DateTimeFormat("es-PY", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
 const ACTIVE_ACTION_JOB_KEY = "teklease-active-mdm-device-action-job";
 
 export function DeviceManagement() {
@@ -120,12 +160,20 @@ export function DeviceManagement() {
   const [filter, setFilter] = useState("");
   const [message, setMessage] = useState("");
   const [templates, setTemplates] = useState<string[]>([]);
+  const [branches, setBranches] = useState<MdmBranch[]>([]);
+  const [branchId, setBranchId] = useState("");
+  const [isLoadingBranches, setIsLoadingBranches] = useState(true);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const [isQuerying, setIsQuerying] = useState(false);
   const [pendingAction, setPendingAction] = useState<"lock" | "unlock" | null>(null);
   const [activeJobId, setActiveJobId] = useState("");
   const [activeJob, setActiveJob] = useState<MdmDeviceActionJob | null>(null);
+  const [jobHistory, setJobHistory] = useState<MdmDeviceActionJob[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [rerunningJobId, setRerunningJobId] = useState("");
+  const [jobDetail, setJobDetail] = useState<MdmDeviceActionJobDetail | null>(null);
+  const [loadingDetailJobId, setLoadingDetailJobId] = useState("");
   const [isRetryingJob, setIsRetryingJob] = useState(false);
   const [maxSpecificDevices, setMaxSpecificDevices] = useState(1000);
   const [queryBatchSize, setQueryBatchSize] = useState(20);
@@ -155,6 +203,31 @@ export function DeviceManagement() {
   const allVisibleSelected =
     visibleDevices.some((device) => device.found) &&
     visibleDevices.filter((device) => device.found).every((device) => selected.has(device.device_id));
+
+  async function loadJobHistory() {
+    try {
+      const response = await fetch("/api/mdm/action-jobs", { cache: "no-store" });
+      const data = (await response.json()) as ActionJobHistoryResponse;
+      if (!response.ok || data.status !== "success" || !Array.isArray(data.jobs)) {
+        throw new Error(responseMessage(data));
+      }
+      const parsedJobs = data.jobs.map(parseMdmDeviceActionJob);
+      if (parsedJobs.some((job) => job === null)) {
+        throw new Error("El historial de acciones contiene datos incompletos.");
+      }
+      setJobHistory(
+        parsedJobs.filter(
+          (job): job is MdmDeviceActionJob => job !== null,
+        ),
+      );
+    } catch (error) {
+      setNotice(
+        error instanceof Error ? error.message : "No se pudo cargar el historial.",
+      );
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -189,6 +262,45 @@ export function DeviceManagement() {
     }
 
     void loadTemplates();
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    void loadJobHistory();
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadBranches() {
+      try {
+        const response = await fetch("/api/mdm/branches", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const data = (await response.json()) as BranchResponse;
+        if (
+          !response.ok ||
+          data.status !== "success" ||
+          !Array.isArray(data.branches) ||
+          !data.branches.every(isMdmBranch)
+        ) {
+          throw new Error(responseMessage(data));
+        }
+        setBranches(data.branches);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        setNotice(
+          error instanceof Error
+            ? error.message
+            : "No se pudieron cargar las sucursales.",
+        );
+      } finally {
+        if (!controller.signal.aborted) setIsLoadingBranches(false);
+      }
+    }
+
+    void loadBranches();
     return () => controller.abort();
   }, []);
 
@@ -252,6 +364,7 @@ export function DeviceManagement() {
           throw new Error(responseMessage(data));
         }
         setActiveJob(job);
+        void loadJobHistory();
         if (isTerminalMdmDeviceActionJob(job)) {
           window.localStorage.removeItem(ACTIVE_ACTION_JOB_KEY);
           setNotice(
@@ -409,6 +522,11 @@ export function DeviceManagement() {
 
   async function triggerAction(action: "lock" | "unlock") {
     if (!hasTargets || actionInProgress) return;
+    const selectedBranchId = Number(branchId);
+    if (!Number.isSafeInteger(selectedBranchId) || selectedBranchId <= 0) {
+      setNotice("Seleccioná una sucursal antes de ejecutar la acción.");
+      return;
+    }
     if (
       selectedDevices.some((device) => !Number.isSafeInteger(device.db_id))
     ) {
@@ -443,6 +561,7 @@ export function DeviceManagement() {
             db_id: device.db_id,
           })),
           action,
+          branch_id: selectedBranchId,
           message: action === "lock" ? message.trim() : "",
         }),
       });
@@ -456,6 +575,7 @@ export function DeviceManagement() {
       idempotencyKeyRef.current = "";
       setActiveJobId(job.id);
       setActiveJob(job);
+      void loadJobHistory();
       window.localStorage.setItem(ACTIVE_ACTION_JOB_KEY, job.id);
       addLog(
         `Acción ${action === "lock" ? "de bloqueo" : "de desbloqueo"} creada para ${targetLabel}.`,
@@ -488,6 +608,7 @@ export function DeviceManagement() {
         throw new Error(responseMessage(data));
       }
       setActiveJob(job);
+      void loadJobHistory();
       setActiveJobId(job.id);
       window.localStorage.setItem(ACTIVE_ACTION_JOB_KEY, job.id);
       addLog(`Reintentando ${job.pending} dispositivo(s) fallido(s).`);
@@ -495,6 +616,56 @@ export function DeviceManagement() {
       setNotice(error instanceof Error ? error.message : "No se pudo reintentar la acción.");
     } finally {
       setIsRetryingJob(false);
+    }
+  }
+
+  async function handleRerun(job: MdmDeviceActionJob) {
+    if (!isTerminalMdmDeviceActionJob(job) || rerunningJobId) return;
+    if (!window.confirm("¿Volvés a ejecutar esta acción con los mismos dispositivos?")) {
+      return;
+    }
+
+    setRerunningJobId(job.id);
+    setNotice("");
+    try {
+      const response = await fetch(
+        `/api/mdm/action-jobs/${encodeURIComponent(job.id)}/rerun`,
+        { method: "POST" },
+      );
+      const data = (await response.json()) as ActionJobResponse;
+      const rerun = parseMdmDeviceActionJob(data.job);
+      if (!response.ok || data.status !== "success" || !rerun) {
+        throw new Error(responseMessage(data));
+      }
+      setActiveJob(rerun);
+      setActiveJobId(rerun.id);
+      window.localStorage.setItem(ACTIVE_ACTION_JOB_KEY, rerun.id);
+      setJobHistory((current) => [rerun, ...current]);
+      addLog("La acción volvió a quedar en cola.", "success");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "No se pudo volver a ejecutar la acción.");
+    } finally {
+      setRerunningJobId("");
+    }
+  }
+
+  async function handleViewDetail(job: MdmDeviceActionJob) {
+    setLoadingDetailJobId(job.id);
+    try {
+      const response = await fetch(
+        `/api/mdm/action-jobs/${encodeURIComponent(job.id)}`,
+        { cache: "no-store" },
+      );
+      const data = (await response.json()) as ActionJobResponse;
+      const detail = parseMdmDeviceActionJobDetail(data);
+      if (!response.ok || data.status !== "success" || !detail) {
+        throw new Error(responseMessage(data));
+      }
+      setJobDetail(detail);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "No se pudo cargar el detalle de la acción.");
+    } finally {
+      setLoadingDetailJobId("");
     }
   }
 
@@ -627,6 +798,21 @@ export function DeviceManagement() {
 
               <div className={styles.actionFields}>
                 <label>
+                  <span>Sucursal</span>
+                  <select
+                    value={branchId}
+                    onChange={(event) => setBranchId(event.target.value)}
+                    disabled={isLoadingBranches || pendingAction !== null}
+                  >
+                    <option value="">
+                      {isLoadingBranches ? "Cargando sucursales…" : "Seleccionar sucursal"}
+                    </option>
+                    {branches.map((branch) => (
+                      <option key={branch.id} value={branch.id}>{branch.name}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
                   <span>Mensaje de bloqueo</span>
                   <input
                     value={message}
@@ -669,7 +855,7 @@ export function DeviceManagement() {
                   className={styles.unlockButton}
                   type="button"
                   onClick={() => triggerAction("unlock")}
-                  disabled={pendingAction !== null || actionInProgress}
+                  disabled={pendingAction !== null || actionInProgress || !branchId}
                 >
                   <UnlockIcon />
                   {pendingAction === "unlock" ? "Desbloqueando…" : "Desbloquear seleccionados"}
@@ -678,7 +864,7 @@ export function DeviceManagement() {
                   className={styles.lockButton}
                   type="button"
                   onClick={() => triggerAction("lock")}
-                  disabled={pendingAction !== null || actionInProgress}
+                  disabled={pendingAction !== null || actionInProgress || !branchId}
                 >
                   <LockIcon />
                   {pendingAction === "lock" ? "Bloqueando…" : "Bloquear seleccionados"}
@@ -717,6 +903,85 @@ export function DeviceManagement() {
               {isRetryingJob ? "Reintentando…" : "Reintentar fallidos"}
             </button>
           ) : null}
+        </section>
+      ) : null}
+
+      <section className={styles.history} aria-labelledby="action-history-heading">
+        <div className={styles.historyHeading}>
+          <div>
+            <span>HISTORIAL</span>
+            <h2 id="action-history-heading">Ejecuciones recientes</h2>
+          </div>
+          <button type="button" onClick={() => void loadJobHistory()} disabled={isLoadingHistory}>
+            {isLoadingHistory ? "Actualizando…" : "Actualizar"}
+          </button>
+        </div>
+        {isLoadingHistory ? (
+          <p className={styles.historyEmpty}>Cargando ejecuciones…</p>
+        ) : jobHistory.length === 0 ? (
+          <p className={styles.historyEmpty}>Todavía no hay acciones registradas.</p>
+        ) : (
+          <div className={styles.historyList}>
+            {jobHistory.map((job) => (
+              <article className={styles.historyItem} key={job.id}>
+                <div>
+                  <strong>{job.action === "lock" ? "Bloquear" : "Desbloquear"} · {mdmDeviceActionJobLabel(job)}</strong>
+                  <small>{formatJobDate(job.createdAt)} · {job.branchName || "Sin sucursal"}</small>
+                </div>
+                <dl>
+                  <div><dt>Equipos</dt><dd>{job.total}</dd></div>
+                  <div><dt>Completados</dt><dd>{job.succeeded}</dd></div>
+                  <div><dt>Fallidos</dt><dd>{job.failed}</dd></div>
+                </dl>
+                <div className={styles.historyActions}>
+                  {job.rerunOf ? <small>Reejecución</small> : null}
+                  <button
+                    type="button"
+                    onClick={() => void handleViewDetail(job)}
+                    disabled={Boolean(loadingDetailJobId)}
+                  >
+                    {loadingDetailJobId === job.id ? "Abriendo…" : "Ver detalle"}
+                  </button>
+                  {isTerminalMdmDeviceActionJob(job) ? (
+                    <button
+                      type="button"
+                      onClick={() => void handleRerun(job)}
+                      disabled={Boolean(rerunningJobId)}
+                    >
+                      {rerunningJobId === job.id ? "Reejecutando…" : "Volver a ejecutar"}
+                    </button>
+                  ) : <small>En proceso</small>}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {jobDetail ? (
+        <section className={styles.jobDetail} aria-labelledby="action-detail-heading">
+          <div className={styles.jobDetailHeading}>
+            <div>
+              <span>DETALLE DE EJECUCIÓN</span>
+              <h2 id="action-detail-heading">
+                {jobDetail.action === "lock" ? "Bloquear" : "Desbloquear"} · {mdmDeviceActionJobLabel(jobDetail)}
+              </h2>
+              <small>{formatJobDate(jobDetail.createdAt)} · {jobDetail.branchName || "Sin sucursal"}</small>
+            </div>
+            <button type="button" onClick={() => setJobDetail(null)}>Cerrar</button>
+          </div>
+          {jobDetail.action === "lock" && jobDetail.message ? (
+            <p className={styles.detailMessage}>{jobDetail.message}</p>
+          ) : null}
+          <div className={styles.detailDevices}>
+            {jobDetail.items.map((item) => (
+              <div key={item.deviceId}>
+                <strong>{item.deviceId}</strong>
+                <span>{item.status} · intento{item.attempts === 1 ? "" : "s"} {item.attempts}</span>
+                {item.lastError ? <small>{item.lastError}</small> : null}
+              </div>
+            ))}
+          </div>
         </section>
       ) : null}
 

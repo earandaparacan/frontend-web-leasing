@@ -7,6 +7,9 @@ export type MdmDeviceActionJobStatus =
 
 export type MdmDeviceActionJob = {
   id: string;
+  branchName: string;
+  createdAt: string;
+  rerunOf: string | null;
   action: "lock" | "unlock";
   status: MdmDeviceActionJobStatus;
   total: number;
@@ -14,6 +17,16 @@ export type MdmDeviceActionJob = {
   succeeded: number;
   failed: number;
   lastError: string;
+};
+
+export type MdmDeviceActionJobDetail = MdmDeviceActionJob & {
+  message: string;
+  items: Array<{
+    deviceId: string;
+    status: string;
+    attempts: number;
+    lastError: string;
+  }>;
 };
 
 const statuses = new Set<MdmDeviceActionJobStatus>([
@@ -33,6 +46,10 @@ export function parseMdmDeviceActionJob(value: unknown): MdmDeviceActionJob | nu
   const job = value as Record<string, unknown>;
   if (
     typeof job.id !== "string" ||
+    typeof job.branch_name !== "string" ||
+    typeof job.created_at !== "string" ||
+    Number.isNaN(Date.parse(job.created_at)) ||
+    (job.rerun_of !== null && typeof job.rerun_of !== "string") ||
     (job.action !== "lock" && job.action !== "unlock") ||
     typeof job.status !== "string" ||
     !statuses.has(job.status as MdmDeviceActionJobStatus) ||
@@ -47,6 +64,9 @@ export function parseMdmDeviceActionJob(value: unknown): MdmDeviceActionJob | nu
 
   return {
     id: job.id,
+    branchName: job.branch_name,
+    createdAt: job.created_at,
+    rerunOf: typeof job.rerun_of === "string" ? job.rerun_of : null,
     action: job.action,
     status: job.status as MdmDeviceActionJobStatus,
     total: job.total,
@@ -54,6 +74,47 @@ export function parseMdmDeviceActionJob(value: unknown): MdmDeviceActionJob | nu
     succeeded: job.succeeded,
     failed: job.failed,
     lastError: typeof job.last_error === "string" ? job.last_error : "",
+  };
+}
+
+export function parseMdmDeviceActionJobDetail(
+  value: unknown,
+): MdmDeviceActionJobDetail | null {
+  if (typeof value !== "object" || value === null) return null;
+  const candidate = "job" in value ? value.job : value;
+  if (typeof candidate !== "object" || candidate === null) return null;
+  const job = parseMdmDeviceActionJob(candidate);
+  const detail = candidate as Record<string, unknown>;
+  if (!job || typeof detail.message !== "string" || !Array.isArray(detail.items)) {
+    return null;
+  }
+
+  const items = detail.items.map((item) => {
+    if (typeof item !== "object" || item === null) return null;
+    const itemValue = item as Record<string, unknown>;
+    if (
+      typeof itemValue.device_id !== "string" ||
+      typeof itemValue.status !== "string" ||
+      !isNonNegativeInteger(itemValue.attempts) ||
+      typeof itemValue.last_error !== "string"
+    ) {
+      return null;
+    }
+    return {
+      deviceId: itemValue.device_id,
+      status: itemValue.status,
+      attempts: itemValue.attempts,
+      lastError: itemValue.last_error,
+    };
+  });
+  if (items.some((item) => item === null)) return null;
+
+  return {
+    ...job,
+    message: detail.message,
+    items: items.filter(
+      (item): item is MdmDeviceActionJobDetail["items"][number] => item !== null,
+    ),
   };
 }
 
