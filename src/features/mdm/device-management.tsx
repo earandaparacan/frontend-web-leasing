@@ -822,6 +822,8 @@ export function DeviceManagement() {
         </div>
       ) : null}
 
+        </main>
+
       {devices.length > 0 ? (
         <section className={styles.results}>
           <div className={styles.resultsHeading}>
@@ -877,6 +879,7 @@ export function DeviceManagement() {
         </section>
       ) : null}
 
+      <div className={`${styles.mainColumn} ${styles.actionColumn}`}>
       {devices.length > 0 && hasTargets ? (
             <section className={styles.actionPanel}>
               <div className={styles.actionStepHeading}>
@@ -1002,7 +1005,7 @@ export function DeviceManagement() {
         </section>
       ) : null}
 
-        </main>
+      </div>
 
         <aside className={styles.historyPreview} aria-labelledby="action-history-heading">
           <div className={styles.historyPreviewHeading}>

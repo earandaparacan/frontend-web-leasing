@@ -1137,11 +1137,15 @@ export function MdmMessaging() {
               </div>
             )}
 
+          </div>
+          </section>
+
+          <section className={`${styles.card} ${styles.messageCard}`} aria-labelledby="message-content-heading">
             <form className={styles.messageForm} onSubmit={handleSend}>
               <div className={styles.stepHeading}>
                 <span>2</span>
                 <div>
-                  <strong>Escribí el mensaje</strong>
+                  <strong id="message-content-heading">Escribí el mensaje</strong>
                   <small>
                     {targetMode === "all"
                       ? "El aviso se enviará a toda la flota registrada."
@@ -1268,7 +1272,6 @@ export function MdmMessaging() {
                       : `Registrar envío a ${devicesForJob.length} identificador${devicesForJob.length === 1 ? "" : "es"}`}
               </button>
             </form>
-          </div>
           </section>
 
         </div>

@@ -85,6 +85,7 @@
 }
 
 .card { overflow: hidden; }
+.messageCard { padding: 26px; }
 
 .cardHeader {
   display: flex;
@@ -394,9 +395,7 @@
 .groupTarget > small { color: #888; font-size: 8px; line-height: 1.5; }
 
 .messageForm {
-  margin-top: 28px;
-  padding-top: 25px;
-  border-top: 1px solid #eee;
+  margin: 0;
 }
 
 .templateControls {
@@ -682,6 +681,7 @@
   .secureBadge { display: none; }
   .cardHeaderActions { margin-left: auto; }
   .cardBody { padding: 20px; }
+  .messageCard { padding: 20px; }
   .targetModes { grid-template-columns: 1fr; }
   .deviceSearch { grid-template-columns: 1fr; }
   .importTools { align-items: flex-start; flex-direction: column; }

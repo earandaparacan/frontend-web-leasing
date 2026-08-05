@@ -118,6 +118,8 @@
 
 .mainColumn { display: grid; }
 
+.actionColumn { grid-column: 1 / -1; }
+
 .queryCard,
 .results {
   border: 1px solid #e5e5e5;
@@ -294,6 +296,7 @@
 }
 
 .results {
+  grid-column: 1 / -1;
   margin-top: 24px;
   overflow: hidden;
 }
@@ -770,8 +773,8 @@
 }
 
 .historyPreview {
-  position: sticky;
-  top: 24px;
+  grid-column: 2;
+  grid-row: 1;
   padding: 20px;
   border: 1px solid #e4e4e4;
   border-radius: 17px;
@@ -953,7 +956,7 @@
   }
 
   .contentLayout { grid-template-columns: 1fr; }
-  .historyPreview { position: static; }
+  .historyPreview { grid-column: auto; grid-row: auto; }
 
   .saveTemplate {
     grid-column: 1 / -1;
