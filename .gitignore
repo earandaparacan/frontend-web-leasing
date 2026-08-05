@@ -39,6 +39,7 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Local caches
+.pnpm-store/
 .turbo
 .eslintcache
 
