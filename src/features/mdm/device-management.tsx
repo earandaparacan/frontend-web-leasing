@@ -211,6 +211,7 @@ export function DeviceManagement() {
   const [maxSpecificDevices, setMaxSpecificDevices] = useState(1000);
   const [queryBatchSize, setQueryBatchSize] = useState(20);
   const idempotencyKeyRef = useRef("");
+  const displayedDeviceIdentifiersRef = useRef<string[]>([]);
   const detailTriggerRef = useRef<HTMLButtonElement>(null);
   const historyBackButtonRef = useRef<HTMLButtonElement>(null);
   const historyCloseButtonRef = useRef<HTMLButtonElement>(null);
@@ -406,6 +407,10 @@ export function DeviceManagement() {
 
   const activeJobTerminal = activeJob ? isTerminalMdmDeviceActionJob(activeJob) : false;
   useEffect(() => {
+    displayedDeviceIdentifiersRef.current = devices.map((device) => device.device_id);
+  }, [devices]);
+
+  useEffect(() => {
     if (!activeJobId || activeJobTerminal) return;
 
     const controller = new AbortController();
@@ -425,6 +430,9 @@ export function DeviceManagement() {
         void loadJobHistory();
         if (isTerminalMdmDeviceActionJob(job)) {
           window.localStorage.removeItem(ACTIVE_ACTION_JOB_KEY);
+          if (job.succeeded > 0 && displayedDeviceIdentifiersRef.current.length > 0) {
+            void queryDevices(displayedDeviceIdentifiersRef.current);
+          }
           return;
         }
       } catch (error) {
