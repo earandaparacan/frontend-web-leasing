@@ -628,11 +628,11 @@ export function DeviceManagement() {
 
   async function triggerAction(action: "lock" | "unlock") {
     if (!hasTargets || actionInProgress) return;
-    const selectedBranchId = Number(branchId);
-    if (!Number.isSafeInteger(selectedBranchId) || selectedBranchId <= 0) {
-      setNotice("Seleccioná una sucursal antes de ejecutar la acción.");
+    if (action === "lock" && !selectedTemplate) {
+      setNotice("Seleccioná una plantilla antes de bloquear dispositivos.");
       return;
     }
+    const selectedBranchId = branchId ? Number(branchId) : undefined;
     const actionLabel = action === "lock" ? "bloquear" : "desbloquear";
     const targetLabel = `${actionDevices.length} identificador(es)`;
     if (!window.confirm(`¿Confirmás ${actionLabel} ${targetLabel}?`)) {
@@ -659,8 +659,8 @@ export function DeviceManagement() {
             number: device.device_id,
           })),
           action,
-          branch_id: selectedBranchId,
           message: action === "lock" ? message.trim() : "",
+          ...(selectedBranchId === undefined ? {} : { branch_id: selectedBranchId }),
         }),
       });
       const data = (await response.json()) as ActionJobResponse;
@@ -923,12 +923,12 @@ export function DeviceManagement() {
                 <span className={styles.step}>2</span>
                 <div>
                   <h2>Elegí la acción</h2>
-                  <p>Confirmá la sucursal y ejecutá el bloqueo o desbloqueo.</p>
+                  <p>La sucursal es opcional. Para bloquear, elegí una plantilla.</p>
                 </div>
               </div>
               <div className={styles.actionFields}>
                 <label>
-                  <span>Sucursal</span>
+                  <span>Sucursal (opcional)</span>
                   <select
                     value={branchId}
                     onChange={(event) => setBranchId(event.target.value)}
@@ -947,12 +947,12 @@ export function DeviceManagement() {
                   <input
                     value={message}
                     onChange={(event) => setMessage(event.target.value)}
-                    placeholder="Mensaje visible en el dispositivo (opcional)"
+                    placeholder="Mensaje visible en el dispositivo"
                     maxLength={500}
                   />
                 </label>
                 <label>
-                  <span>Plantilla</span>
+                  <span>Plantilla (obligatoria para bloquear)</span>
                   <select
                     value={selectedTemplate}
                     onChange={(event) => applyTemplate(event.target.value)}
@@ -985,7 +985,7 @@ export function DeviceManagement() {
                   className={styles.unlockButton}
                   type="button"
                   onClick={() => triggerAction("unlock")}
-                  disabled={pendingAction !== null || actionInProgress || !branchId}
+                  disabled={pendingAction !== null || actionInProgress}
                 >
                   <UnlockIcon />
                   {pendingAction === "unlock"
@@ -998,7 +998,7 @@ export function DeviceManagement() {
                   className={styles.lockButton}
                   type="button"
                   onClick={() => triggerAction("lock")}
-                  disabled={pendingAction !== null || actionInProgress || !branchId}
+                  disabled={pendingAction !== null || actionInProgress || !selectedTemplate}
                 >
                   <LockIcon />
                   {pendingAction === "lock"
