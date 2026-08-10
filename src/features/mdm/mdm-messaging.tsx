@@ -367,9 +367,9 @@ export function MdmMessaging() {
     const jobId = new URLSearchParams(window.location.search).get("editarEjecucion");
     if (!jobId || !capabilities) return;
 
-    async function loadExecutionForEditing() {
+    async function loadExecutionForEditing(id: string) {
       try {
-        const response = await fetch(`/api/mdm/message-jobs/${encodeURIComponent(jobId)}`, {
+        const response = await fetch(`/api/mdm/message-jobs/${encodeURIComponent(id)}`, {
           cache: "no-store",
         });
         const data = (await response.json()) as ApiResponse;
@@ -395,7 +395,7 @@ export function MdmMessaging() {
       }
     }
 
-    void loadExecutionForEditing();
+    void loadExecutionForEditing(jobId);
   }, [capabilities]);
 
   useEffect(() => {
