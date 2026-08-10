@@ -454,39 +454,68 @@ export function DeviceManagement() {
   useEffect(() => {
     if (!activeJobId || activeJobTerminal) return;
 
-    const controller = new AbortController();
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    async function pollJob() {
+    let closed = false;
+    let reconnectDelay = 1_000;
+    let reconnectTimer: number | undefined;
+    let source: EventSource | undefined;
+
+    function closeSource() {
+      source?.close();
+      source = undefined;
+    }
+
+    function handleProgress(event: MessageEvent<string>) {
       try {
-        const response = await fetch(`/api/mdm/action-jobs/${encodeURIComponent(activeJobId)}`, {
-          cache: "no-store",
-          signal: controller.signal,
-        });
-        const data = (await response.json()) as ActionJobResponse;
+        const data = JSON.parse(event.data) as ActionJobResponse;
         const job = parseMdmDeviceActionJob(data.job);
-        if (!response.ok || data.status !== "success" || !job) {
-          throw new Error(responseMessage(data));
-        }
+        if (!job) throw new Error("El progreso recibido está incompleto.");
+
         setActiveJob(job);
-        void loadJobHistory();
         if (isTerminalMdmDeviceActionJob(job)) {
+          closed = true;
+          closeSource();
           window.localStorage.removeItem(ACTIVE_ACTION_JOB_KEY);
+          void loadJobHistory();
           if (job.succeeded > 0 && displayedDeviceIdentifiersRef.current.length > 0) {
             void queryDevices(displayedDeviceIdentifiersRef.current);
           }
-          return;
         }
       } catch (error) {
-        if (controller.signal.aborted) return;
-        setNotice(error instanceof Error ? error.message : "No se pudo consultar la acción.");
+        setNotice(
+          error instanceof Error
+            ? error.message
+            : "No se pudo actualizar el progreso de la acción.",
+        );
       }
-      timeoutId = setTimeout(pollJob, 2000);
     }
 
-    void pollJob();
+    function connect() {
+      if (closed) return;
+
+      const nextSource = new EventSource(
+        `/api/mdm/action-jobs/${encodeURIComponent(activeJobId)}/events`,
+      );
+      source = nextSource;
+      nextSource.addEventListener("snapshot", handleProgress);
+      nextSource.addEventListener("progress", handleProgress);
+      nextSource.onopen = () => {
+        reconnectDelay = 1_000;
+      };
+      nextSource.onerror = () => {
+        nextSource.close();
+        if (source === nextSource) source = undefined;
+        if (closed) return;
+
+        reconnectTimer = window.setTimeout(connect, reconnectDelay);
+        reconnectDelay = Math.min(reconnectDelay * 2, 60_000);
+      };
+    }
+
+    connect();
     return () => {
-      controller.abort();
-      if (timeoutId) clearTimeout(timeoutId);
+      closed = true;
+      closeSource();
+      if (reconnectTimer) window.clearTimeout(reconnectTimer);
     };
   }, [activeJobId, activeJobTerminal]);
 
