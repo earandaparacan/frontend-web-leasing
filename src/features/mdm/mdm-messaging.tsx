@@ -361,7 +361,7 @@ export function MdmMessaging() {
 
   useEffect(() => {
     const jobId = new URLSearchParams(window.location.search).get("editarEjecucion");
-    if (!jobId) return;
+    if (!jobId || !capabilities) return;
 
     async function loadExecutionForEditing() {
       try {
@@ -373,14 +373,16 @@ export function MdmMessaging() {
         if (!response.ok || data.status !== "success" || !detail) {
           throw new Error(responseMessage(data));
         }
+        const identifiersToEdit = detail.items.map((item) => item.deviceId);
         setTargetMode("devices");
-        handleIdentifierChange(detail.items.map((item) => item.deviceId).join("\n"));
+        handleIdentifierChange(identifiersToEdit.join("\n"));
         setMessage(detail.message);
         setSelectedTemplate(detail.message);
         setNotice({
           tone: "success",
-          text: "La ejecución fue cargada. Verificá los dispositivos, la sucursal y el mensaje antes de enviar.",
+          text: "La ejecución fue cargada. Verificando y seleccionando los dispositivos encontrados…",
         });
+        await verifyDevices(identifiersToEdit, true);
       } catch (error) {
         setNotice({
           tone: "error",
@@ -390,7 +392,7 @@ export function MdmMessaging() {
     }
 
     void loadExecutionForEditing();
-  }, []);
+  }, [capabilities]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -580,16 +582,18 @@ export function MdmMessaging() {
     jobRequestRef.current = null;
   }
 
-  async function handleVerify(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function verifyDevices(
+    deviceIdentifiers = identifiers,
+    selectFoundDevices = false,
+  ) {
     if (!capabilities) {
       setNotice({ tone: "error", text: "La configuración MDM todavía está cargando." });
       return;
     }
     if (
-      identifiers.length === 0 ||
-      identifiers.length > capabilities.max_specific_devices ||
-      identifiers.some(
+      deviceIdentifiers.length === 0 ||
+      deviceIdentifiers.length > capabilities.max_specific_devices ||
+      deviceIdentifiers.some(
         (identifier) => identifier.length > capabilities.max_identifier_length,
       )
     ) {
@@ -604,11 +608,11 @@ export function MdmMessaging() {
     setNotice(null);
     setDevices([]);
     setSelected(new Set());
-    addLog(`Verificando ${identifiers.length} dispositivo(s)…`);
+    addLog(`Verificando ${deviceIdentifiers.length} dispositivo(s)…`);
 
     try {
       const verifiedDevices: Device[] = [];
-      const batches = deviceBatches(identifiers, capabilities.query_batch_size);
+      const batches = deviceBatches(deviceIdentifiers, capabilities.query_batch_size);
 
       for (
         let offset = 0;
@@ -638,7 +642,15 @@ export function MdmMessaging() {
       }
 
       setDevices(verifiedDevices);
-      setSelected(new Set());
+      setSelected(
+        selectFoundDevices
+          ? new Set(
+              verifiedDevices
+                .filter((device) => device.found)
+                .map((device) => device.device_id),
+            )
+          : new Set(),
+      );
       setFilter("");
       const found = verifiedDevices.filter((device) => device.found).length;
       addLog(
@@ -660,6 +672,11 @@ export function MdmMessaging() {
     } finally {
       setIsVerifying(false);
     }
+  }
+
+  async function handleVerify(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await verifyDevices();
   }
 
   function toggleDevice(deviceId: string) {
