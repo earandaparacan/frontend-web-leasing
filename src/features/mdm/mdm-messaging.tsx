@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckIcon,
   ChevronRightIcon,
@@ -157,6 +157,15 @@ function formatJobDate(value: string) {
     dateStyle: "short",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function relativeJobTime(value: string) {
+  const minutes = Math.max(0, Math.round((Date.now() - new Date(value).getTime()) / 60_000));
+  if (minutes < 1) return "Hace instantes";
+  if (minutes < 60) return `Hace ${minutes} min`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `Hace ${hours} h`;
+  return `Hace ${Math.round(hours / 24)} d`;
 }
 
 function escapeSpreadsheetValue(value: string) {
@@ -569,29 +578,6 @@ export function MdmMessaging() {
     setNotice(null);
     setFilter("");
     jobRequestRef.current = null;
-  }
-
-  async function handleDeviceFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    if (!capabilities) {
-      setNotice({ tone: "error", text: "La configuración MDM todavía está cargando." });
-      return;
-    }
-    if (file.size > capabilities.max_import_bytes) {
-      setNotice({
-        tone: "error",
-        text: `El archivo no puede superar ${Math.ceil(capabilities.max_import_bytes / 1_000_000)} MB.`,
-      });
-      return;
-    }
-
-    try {
-      handleIdentifierChange(await file.text());
-    } catch {
-      setNotice({ tone: "error", text: "No se pudo leer el archivo seleccionado." });
-    }
   }
 
   async function handleVerify(event: FormEvent<HTMLFormElement>) {
@@ -1117,7 +1103,7 @@ export function MdmMessaging() {
                       onChange={(event) => handleIdentifierChange(event.target.value)}
                       placeholder={"TKL-3019\n356938035643809"}
                       autoComplete="off"
-                      rows={3}
+                      rows={8}
                       disabled={isVerifying || isSending}
                     />
                     <small>
@@ -1134,18 +1120,7 @@ export function MdmMessaging() {
                   </button>
                 </form>
 
-                <div className={styles.importTools}>
-                  <span>Un identificador por línea, o separados por coma.</span>
-                  <label>
-                    Importar CSV o TXT
-                    <input
-                      type="file"
-                      accept=".csv,.txt,text/csv,text/plain"
-                      onChange={(event) => void handleDeviceFile(event)}
-                      disabled={isVerifying || isSending || !capabilities}
-                    />
-                  </label>
-                </div>
+                <p className={styles.identifierHint}>Un identificador por línea, o separados por coma.</p>
 
               </>
             ) : targetMode === "all" ? (
@@ -1461,11 +1436,11 @@ export function MdmMessaging() {
           <section className={styles.historyPreview} aria-labelledby="message-history-heading">
             <div className={styles.historyPreviewHeading}>
               <div>
-                <span>HISTORIAL</span>
                 <h2 id="message-history-heading">Últimas ejecuciones</h2>
+                <span><i />Actualizado hace instantes</span>
               </div>
-              <button type="button" onClick={() => void loadJobHistory()} disabled={isLoadingHistory}>
-                {isLoadingHistory ? "Actualizando…" : "Actualizar"}
+              <button type="button" onClick={() => void loadJobHistory()} disabled={isLoadingHistory} aria-label="Actualizar ejecuciones">
+                ↻
               </button>
             </div>
             {isLoadingHistory ? (
@@ -1476,11 +1451,17 @@ export function MdmMessaging() {
               <div className={styles.historyPreviewList}>
                 {jobHistory.slice(0, 4).map((job) => (
                   <Link className={styles.historyPreviewItem} href={`/panel/mensajeria/historial?ejecucion=${encodeURIComponent(job.id)}`} key={job.id}>
-                    <div>
-                      <strong>{messageJobStatusLabel(job.status)}</strong>
-                      <small>{formatJobDate(job.createdAt)}</small>
+                    <span className={styles.historyPreviewIcon}>
+                      <MessageIcon />
+                    </span>
+                    <div className={styles.historyPreviewContent}>
+                      <strong>Enviar mensaje</strong>
+                      <span className={`${styles.historyPreviewStatus} ${job.status === "SUCCEEDED" ? "" : styles.historyPreviewStatusWarning}`}>
+                        {job.status === "SUCCEEDED" ? <CheckIcon /> : "△"} {messageJobStatusLabel(job.status)}
+                      </span>
+                      <small>{relativeJobTime(job.createdAt)} · {job.total} equipo{job.total === 1 ? "" : "s"}</small>
                     </div>
-                    <span>{job.total} equipo{job.total === 1 ? "" : "s"}</span>
+                    <span className={styles.historyPreviewArrow}>›</span>
                   </Link>
                 ))}
               </div>

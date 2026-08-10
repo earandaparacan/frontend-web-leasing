@@ -1,5 +1,5 @@
 .page {
-  width: min(1280px, calc(100% - 64px));
+  width: min(1480px, calc(100% - 64px));
   margin: 0 auto;
   padding: 54px 0 70px;
 }
@@ -441,8 +441,12 @@
   .quickActions { min-height: 250px; }
 }
 
+@media (max-width: 950px) {
+  .page { width: min(100% - 40px, 1480px); }
+}
+
 @media (max-width: 700px) {
-  .page { width: min(100% - 40px, 1280px); padding-top: 38px; }
+  .page { padding-top: 38px; }
   .welcome, .sectionHeading { align-items: flex-start; }
   .welcome { display: grid; margin-bottom: 38px; }
   .status { min-width: 0; width: fit-content; }
@@ -453,8 +457,12 @@
   .activityItem time { display: none; }
 }
 
+@media (max-width: 720px) {
+  .page { width: min(100% - 28px, 1480px); }
+}
+
 @media (max-width: 460px) {
-  .page { width: min(100% - 28px, 1280px); padding: 30px 0 48px; }
+  .page { padding: 30px 0 48px; }
   .metricGrid { grid-template-columns: 1fr; gap: 10px; }
   .metricCard { min-height: 140px; }
   .metricCard > strong { font-size: 34px; }
