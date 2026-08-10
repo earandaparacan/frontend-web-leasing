@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import {
   CheckIcon,
   ChevronRightIcon,
@@ -236,6 +237,8 @@ export function MdmMessaging() {
   const [jobHistory, setJobHistory] = useState<MessageJob[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [rerunningJobId, setRerunningJobId] = useState("");
+  const [jobToRerun, setJobToRerun] = useState<MessageJob | null>(null);
+  const [isSendConfirmationOpen, setIsSendConfirmationOpen] = useState(false);
   const [jobDetail, setJobDetail] = useState<MessageJobDetail | null>(null);
   const [loadingDetailJobId, setLoadingDetailJobId] = useState("");
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
@@ -251,6 +254,7 @@ export function MdmMessaging() {
   ]);
   const jobRequestRef = useRef<{ signature: string; key: string } | null>(null);
   const detailTriggerRef = useRef<HTMLButtonElement>(null);
+  const confirmedSendRef = useRef(false);
   const historyBackButtonRef = useRef<HTMLButtonElement>(null);
   const historyCloseButtonRef = useRef<HTMLButtonElement>(null);
   const historyTriggerRef = useRef<HTMLButtonElement>(null);
@@ -641,24 +645,28 @@ export function MdmMessaging() {
         verifiedDevices.push(...batchResults.flat());
       }
 
-      setDevices(verifiedDevices);
+      const uniqueVerifiedDevices = Array.from(
+        new Map(verifiedDevices.map((device) => [device.device_id, device])).values(),
+      );
+
+      setDevices(uniqueVerifiedDevices);
       setSelected(
         selectFoundDevices
           ? new Set(
-              verifiedDevices
+              uniqueVerifiedDevices
                 .filter((device) => device.found)
                 .map((device) => device.device_id),
             )
           : new Set(),
       );
       setFilter("");
-      const found = verifiedDevices.filter((device) => device.found).length;
+      const found = uniqueVerifiedDevices.filter((device) => device.found).length;
       addLog(
-        `Verificación completada: ${found} encontrado(s) y ${verifiedDevices.length - found} sin registro.`,
+        `Verificación completada: ${found} encontrado(s) y ${uniqueVerifiedDevices.length - found} sin registro.`,
         "success",
       );
       setNotice(
-        verifiedDevices.every((device) => !device.found)
+        uniqueVerifiedDevices.every((device) => !device.found)
           ? { tone: "error", text: "No encontramos ningún dispositivo registrado." }
           : null,
       );
@@ -773,8 +781,12 @@ export function MdmMessaging() {
     }
   }
 
-  async function handleSend(event: FormEvent<HTMLFormElement>) {
+  function handleSend(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    void sendMessage();
+  }
+
+  async function sendMessage() {
     const cleanMessage = message.trim();
     const selectedBranchId = Number(branchId);
 
@@ -802,33 +814,11 @@ export function MdmMessaging() {
       });
       return;
     }
-    if (
-      targetMode === "all" &&
-      !window.confirm(
-        "¿Confirmás el envío de este mensaje a todos los dispositivos registrados?",
-      )
-    ) {
+    if (!confirmedSendRef.current) {
+      setIsSendConfirmationOpen(true);
       return;
     }
-    if (
-      targetMode === "group" &&
-      selectedGroup &&
-      !window.confirm(`¿Confirmás el envío al grupo “${selectedGroup.name}”?`)
-    ) {
-      return;
-    }
-    if (
-      targetMode === "devices" &&
-      !window.confirm(
-        `¿Confirmás el envío en segundo plano a ${devicesForJob.length} identificadores${
-          missingDevices.length > 0
-            ? `? ${missingDevices.length} se registrará${missingDevices.length === 1 ? "" : "n"} como no encontrado${missingDevices.length === 1 ? "" : "s"} sin enviarlo${missingDevices.length === 1 ? "" : "s"} a Headwind.`
-            : "?"
-        }`,
-      )
-    ) {
-      return;
-    }
+    confirmedSendRef.current = false;
 
     setIsSending(true);
     setNotice(null);
@@ -961,10 +951,6 @@ export function MdmMessaging() {
 
   async function handleRerun(job: MessageJob) {
     if (!isTerminalMessageJob(job) || rerunningJobId) return;
-    if (!window.confirm("¿Volvés a ejecutar este envío con los mismos dispositivos?")) {
-      return;
-    }
-
     setRerunningJobId(job.id);
     setNotice(null);
     try {
@@ -1636,7 +1622,7 @@ export function MdmMessaging() {
                           {isTerminalMessageJob(job) ? (
                             <button
                               type="button"
-                              onClick={() => void handleRerun(job)}
+                              onClick={() => setJobToRerun(job)}
                               disabled={Boolean(rerunningJobId)}
                             >
                               {rerunningJobId === job.id ? "Reejecutando…" : "Reejecutar"}
@@ -1653,6 +1639,31 @@ export function MdmMessaging() {
         </>
       ) : null}
 
+      <ConfirmationDialog
+        isOpen={jobToRerun !== null}
+        title="¿Reejecutar este envío?"
+        description={jobToRerun ? `Se volverá a enviar el mismo mensaje a los ${jobToRerun.total} dispositivo${jobToRerun.total === 1 ? "" : "s"} de esta ejecución.` : ""}
+        confirmLabel="Reejecutar"
+        onCancel={() => setJobToRerun(null)}
+        onConfirm={() => {
+          if (!jobToRerun) return;
+          const job = jobToRerun;
+          setJobToRerun(null);
+          void handleRerun(job);
+        }}
+      />
+      <ConfirmationDialog
+        isOpen={isSendConfirmationOpen}
+        title="¿Enviar este mensaje?"
+        description={targetMode === "all" ? "El mensaje se enviará a todos los dispositivos registrados." : targetMode === "group" ? `El mensaje se enviará al grupo “${selectedGroup?.name ?? "seleccionado"}”.` : `El mensaje se enviará a ${devicesForJob.length} identificador${devicesForJob.length === 1 ? "" : "es"}.${missingDevices.length > 0 ? ` ${missingDevices.length} no se enviará${missingDevices.length === 1 ? "" : "n"} porque no está${missingDevices.length === 1 ? "" : "n"} registrado${missingDevices.length === 1 ? "" : "s"}.` : ""}`}
+        confirmLabel="Enviar mensaje"
+        onCancel={() => setIsSendConfirmationOpen(false)}
+        onConfirm={() => {
+          setIsSendConfirmationOpen(false);
+          confirmedSendRef.current = true;
+          void sendMessage();
+        }}
+      />
     </div>
   );
 }

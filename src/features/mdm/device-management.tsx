@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { CheckIcon, LockIcon, ShieldIcon } from "@/components/icons";
 import {
   isTerminalMdmDeviceActionJob,
@@ -214,6 +215,8 @@ export function DeviceManagement() {
   const [jobHistory, setJobHistory] = useState<MdmDeviceActionJob[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [rerunningJobId, setRerunningJobId] = useState("");
+  const [actionToConfirm, setActionToConfirm] = useState<"lock" | "unlock" | null>(null);
+  const [jobToRerun, setJobToRerun] = useState<MdmDeviceActionJob | null>(null);
   const [jobDetail, setJobDetail] = useState<MdmDeviceActionJobDetail | null>(null);
   const [loadingDetailJobId, setLoadingDetailJobId] = useState("");
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
@@ -655,10 +658,6 @@ export function DeviceManagement() {
     const selectedBranchId = branchId ? Number(branchId) : undefined;
     const actionLabel = action === "lock" ? "bloquear" : "desbloquear";
     const targetLabel = `${actionDevices.length} identificador(es)`;
-    if (!window.confirm(`¿Confirmás ${actionLabel} ${targetLabel}?`)) {
-      return;
-    }
-
     setPendingAction(action);
     setNotice("");
     addLog(`Enviando comando para ${actionLabel} ${targetLabel}…`);
@@ -714,6 +713,15 @@ export function DeviceManagement() {
     }
   }
 
+  function requestAction(action: "lock" | "unlock") {
+    if (!hasTargets || actionInProgress) return;
+    if (action === "lock" && !selectedTemplate) {
+      setNotice("Seleccioná una plantilla antes de bloquear dispositivos.");
+      return;
+    }
+    setActionToConfirm(action);
+  }
+
   async function retryFailedDevices() {
     if (!activeJob || !isTerminalMdmDeviceActionJob(activeJob)) return;
     setIsRetryingJob(true);
@@ -742,10 +750,6 @@ export function DeviceManagement() {
 
   async function handleRerun(job: MdmDeviceActionJob) {
     if (!isTerminalMdmDeviceActionJob(job) || rerunningJobId) return;
-    if (!window.confirm("¿Volvés a ejecutar esta acción con los mismos dispositivos?")) {
-      return;
-    }
-
     setRerunningJobId(job.id);
     setNotice("");
     try {
@@ -1004,7 +1008,7 @@ export function DeviceManagement() {
                 <button
                   className={styles.unlockButton}
                   type="button"
-                  onClick={() => triggerAction("unlock")}
+                  onClick={() => requestAction("unlock")}
                   disabled={pendingAction !== null || actionInProgress}
                 >
                   <UnlockIcon />
@@ -1017,7 +1021,7 @@ export function DeviceManagement() {
                 <button
                   className={styles.lockButton}
                   type="button"
-                  onClick={() => triggerAction("lock")}
+                  onClick={() => requestAction("lock")}
                   disabled={pendingAction !== null || actionInProgress || !selectedTemplate}
                 >
                   <LockIcon />
@@ -1232,7 +1236,7 @@ export function DeviceManagement() {
                           {isTerminalMdmDeviceActionJob(job) ? (
                             <button
                               type="button"
-                              onClick={() => void handleRerun(job)}
+                              onClick={() => setJobToRerun(job)}
                               disabled={Boolean(rerunningJobId)}
                             >
                               {rerunningJobId === job.id ? "Reejecutando…" : "Reejecutar"}
@@ -1266,6 +1270,32 @@ export function DeviceManagement() {
           )) : <p className={styles.emptyLog}>No hay actividad registrada en esta sesión.</p>}
         </div>
       </section>
+      <ConfirmationDialog
+        isOpen={actionToConfirm !== null}
+        title={actionToConfirm === "lock" ? "¿Bloquear dispositivos?" : "¿Desbloquear dispositivos?"}
+        description={actionToConfirm ? `Se enviará la orden para ${actionDevices.length} identificador${actionDevices.length === 1 ? "" : "es"}.` : ""}
+        confirmLabel={actionToConfirm === "lock" ? "Bloquear" : "Desbloquear"}
+        onCancel={() => setActionToConfirm(null)}
+        onConfirm={() => {
+          if (!actionToConfirm) return;
+          const action = actionToConfirm;
+          setActionToConfirm(null);
+          void triggerAction(action);
+        }}
+      />
+      <ConfirmationDialog
+        isOpen={jobToRerun !== null}
+        title="¿Reejecutar esta acción?"
+        description={jobToRerun ? `Se volverá a ${jobToRerun.action === "lock" ? "bloquear" : "desbloquear"} los ${jobToRerun.total} dispositivo${jobToRerun.total === 1 ? "" : "s"} de esta ejecución.` : ""}
+        confirmLabel="Reejecutar"
+        onCancel={() => setJobToRerun(null)}
+        onConfirm={() => {
+          if (!jobToRerun) return;
+          const job = jobToRerun;
+          setJobToRerun(null);
+          void handleRerun(job);
+        }}
+      />
     </div>
   );
 }
