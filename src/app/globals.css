@@ -79,6 +79,12 @@ a {
   margin-left: 264px;
 }
 
+.workspace-page {
+  width: min(1480px, calc(100% - 64px));
+  margin: 0 auto;
+  padding-top: 32px;
+}
+
 .workspace-header {
   display: flex;
   min-height: 78px;
@@ -775,6 +781,19 @@ a:focus-visible {
 @media (max-width: 900px) {
   .workspace-content {
     margin-left: 0;
+  }
+}
+
+@media (max-width: 950px) {
+  .workspace-page {
+    width: min(100% - 40px, 1480px);
+  }
+}
+
+@media (max-width: 650px) {
+  .workspace-page {
+    width: min(100% - 28px, 1480px);
+    padding-top: 25px;
   }
 }
 

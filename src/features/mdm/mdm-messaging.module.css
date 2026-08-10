@@ -1,7 +1,5 @@
 .page {
-  width: min(1480px, calc(100% - 64px));
-  margin: 0 auto;
-  padding: 32px 0 80px;
+  padding-bottom: 80px;
 }
 
 .breadcrumb {
@@ -693,11 +691,9 @@
 }
 
 @media (max-width: 950px) {
-  .page { width: min(100% - 40px, 1480px); }
 }
 
 @media (max-width: 650px) {
-  .page { width: min(100% - 28px, 1480px); padding-top: 25px; }
   .header { display: grid; }
   .headerIcon { grid-row: 1; }
   .cardHeader { align-items: flex-start; }

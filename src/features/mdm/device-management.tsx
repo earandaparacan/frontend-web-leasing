@@ -835,7 +835,7 @@ export function DeviceManagement() {
   }
 
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} workspace-page`}>
       <section className={styles.hero}>
         <div>
           <span className={styles.kicker}>Gestión MDM</span>

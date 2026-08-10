@@ -19,7 +19,7 @@ function href(page: number, search: string, type: string) {
 export function UsersDataView({ rows, pagination, search, type, error }: Props) {
   const first = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.page_size + 1;
   const last = Math.min(pagination.page * pagination.page_size, pagination.total);
-  return <div className={styles.page}>
+  return <div className={`${styles.page} workspace-page`}>
     <nav className={styles.breadcrumb} aria-label="Migas de pan"><Link href="/panel">Dashboard</Link><ChevronRightIcon /><span>Usuarios</span></nav>
     <header className={styles.header}><span>ADMINISTRACIÓN</span><h1>Usuarios</h1><p>Consultá cuentas, perfiles de acceso y el estado de los usuarios del ecosistema Teklease.</p></header>
     <section className={styles.card} aria-labelledby="users-heading">

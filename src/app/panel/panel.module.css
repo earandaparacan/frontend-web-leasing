@@ -1,7 +1,5 @@
 .page {
-  width: min(1480px, calc(100% - 64px));
-  margin: 0 auto;
-  padding: 54px 0 70px;
+  padding-bottom: 70px;
 }
 
 .welcome {
@@ -442,11 +440,9 @@
 }
 
 @media (max-width: 950px) {
-  .page { width: min(100% - 40px, 1480px); }
 }
 
 @media (max-width: 700px) {
-  .page { padding-top: 38px; }
   .welcome, .sectionHeading { align-items: flex-start; }
   .welcome { display: grid; margin-bottom: 38px; }
   .status { min-width: 0; width: fit-content; }
@@ -458,11 +454,9 @@
 }
 
 @media (max-width: 720px) {
-  .page { width: min(100% - 28px, 1480px); }
 }
 
 @media (max-width: 460px) {
-  .page { padding: 30px 0 48px; }
   .metricGrid { grid-template-columns: 1fr; gap: 10px; }
   .metricCard { min-height: 140px; }
   .metricCard > strong { font-size: 34px; }
@@ -474,9 +468,7 @@
 
 /* Operational dashboard */
 .page {
-  width: calc(100% - 108px);
-  max-width: none;
-  padding: 36px 0 52px;
+  padding-bottom: 52px;
 }
 
 .welcome {
@@ -708,13 +700,11 @@
 .historyLink svg { width: 19px; height: 19px; }
 
 @media (max-width: 700px) {
-  .page { width: min(100% - 40px, 1480px); }
   .cardHeading { flex-wrap: wrap; }
   .cardHeading select { margin-left: 38px; }
 }
 
 @media (max-width: 460px) {
-  .page { width: min(100% - 28px, 1480px); }
   .metricCard { gap: 14px; }
   .metricIcon { flex-basis: 48px; width: 48px; height: 48px; }
   .alertItem { grid-template-columns: 40px minmax(0, 1fr); padding: 14px; }

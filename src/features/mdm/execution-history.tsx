@@ -159,7 +159,7 @@ export function ExecutionHistory({ kind, initialJobId = "" }: { kind: Kind; init
   const pagedJobs = visibleJobs.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} workspace-page`}>
       <Link className={styles.back} href={backUrl}>← Volver al módulo</Link>
       <header className={styles.header}>
         <div><span>HISTORIAL</span><h1>{detail || selectedJobId ? "Detalle de ejecución" : title}</h1></div>

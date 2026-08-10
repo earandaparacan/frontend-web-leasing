@@ -119,7 +119,7 @@ export default async function PanelPage() {
   const attentionItems = priorityAlerts.slice(0, 2);
 
   return (
-    <div className={styles.page} data-dashboard>
+    <div className={`${styles.page} workspace-page`} data-dashboard>
       <section className={styles.welcome}>
         <div>
           <span className={styles.eyebrow}>CENTRO DE CONTROL</span>

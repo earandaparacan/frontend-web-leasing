@@ -1014,7 +1014,7 @@ export function MdmMessaging() {
   }
 
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} workspace-page`}>
       <nav className={styles.breadcrumb} aria-label="Migas de pan">
         <Link href="/panel">Dashboard</Link>
         <ChevronRightIcon />
