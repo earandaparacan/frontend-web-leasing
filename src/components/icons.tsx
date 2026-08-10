@@ -57,6 +57,22 @@ export function LockIcon(props: IconProps) {
   );
 }
 
+export function BellIcon(props: IconProps) {
+  return <svg {...sharedProps} {...props}><path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" /><path d="M10 21h4" /></svg>;
+}
+
+export function ClockIcon(props: IconProps) {
+  return <svg {...sharedProps} {...props}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>;
+}
+
+export function RefreshIcon(props: IconProps) {
+  return <svg {...sharedProps} {...props}><path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 5v4h4" /><path d="M4 13a8.1 8.1 0 0 0 15.5 2M20 19v-4h-4" /></svg>;
+}
+
+export function AlertTriangleIcon(props: IconProps) {
+  return <svg {...sharedProps} {...props}><path d="m10.3 3.9-8.1 14A2 2 0 0 0 3.9 21h16.2a2 2 0 0 0 1.7-3.1l-8.1-14a2 2 0 0 0-3.4 0Z" /><path d="M12 9v4M12 17h.01" /></svg>;
+}
+
 export function DashboardIcon(props: IconProps) {
   return (
     <svg {...sharedProps} {...props}>

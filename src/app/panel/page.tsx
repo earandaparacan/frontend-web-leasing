@@ -1,4 +1,16 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import {
+  AlertTriangleIcon,
+  BellIcon,
+  CheckIcon,
+  ChevronRightIcon,
+  ClockIcon,
+  DeviceIcon,
+  LockIcon,
+  MessageIcon,
+  RefreshIcon,
+} from "@/components/icons";
 import { getOperationalDashboard } from "@/lib/operational-dashboard";
 import { getStaffUser } from "@/lib/staff-session";
 import styles from "./panel.module.css";
@@ -8,14 +20,23 @@ export const metadata: Metadata = {
   description: "Centro de control operativo del portal administrativo de Teklease.",
 };
 
-function formatDate(value: string | undefined) {
+type AttentionItem = {
+  severity: "critical" | "warning";
+  title: string;
+  href: string;
+};
+
+function formatUpdatedAt(value: string | undefined) {
   if (!value) return "Datos no disponibles";
+
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Datos no disponibles";
-  return new Intl.DateTimeFormat("es-PY", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
+
+  const minutes = Math.max(0, Math.round((Date.now() - date.getTime()) / 60_000));
+  if (minutes < 1) return "Hace instantes";
+  if (minutes < 60) return `Hace ${minutes} min`;
+
+  return `Hace ${Math.round(minutes / 60)} h`;
 }
 
 function metricValue(value: number | null | undefined) {
@@ -26,7 +47,15 @@ function statusTone(status: string) {
   if (status === "FAILED") return "critical";
   if (status === "PARTIAL_SUCCESS") return "warning";
   if (["QUEUED", "RUNNING"].includes(status)) return "info";
+
   return "success";
+}
+
+function executionIcon(type: string) {
+  if (type.includes("message")) return MessageIcon;
+  if (type.includes("lock") || type.includes("unlock")) return LockIcon;
+
+  return DeviceIcon;
 }
 
 export default async function PanelPage() {
@@ -37,34 +66,49 @@ export default async function PanelPage() {
     {
       label: "Flota MDM",
       value: metricValue(summary?.mdm_devices),
-      detail:
-        summary?.mdm_without_configuration === null || summary?.mdm_without_configuration === undefined
-          ? "Métrica temporalmente no disponible"
-          : `${metricValue(summary.mdm_without_configuration)} sin configuración`,
+      detail: `${metricValue(summary?.mdm_devices)} equipos administrados`,
       tone: "orange",
+      isPositive: true,
     },
     {
       label: "Bloqueados / desbloqueados",
       value: `${metricValue(summary?.mdm_locked)} / ${metricValue(summary?.mdm_unlocked)}`,
-      detail:
-        summary?.mdm_lock_status_unknown === null || summary?.mdm_lock_status_unknown === undefined
-          ? "Estado actual informado por Device Reset"
-          : `${metricValue(summary.mdm_lock_status_unknown)} sin estado en Device Reset`,
-      tone: "red",
+      detail: `${metricValue(summary?.mdm_lock_status_unknown)} en Device Reset`,
+      tone: "purple",
+      isPositive: false,
     },
     {
       label: "Equipos sin reporte",
       value: metricValue(summary?.mdm_without_report_24h),
-      detail:
-        summary?.mdm_without_report_7d === null || summary?.mdm_without_report_7d === undefined
-          ? "Métrica temporalmente no disponible"
-          : `${metricValue(summary.mdm_without_report_7d)} sin reporte hace 7 días`,
+      detail: `${metricValue(summary?.mdm_without_report_7d)} sin reporte hace 7 días`,
       tone: "red",
+      isPositive: false,
     },
   ] as const;
 
+  const priorityAlerts: AttentionItem[] = [];
+  if ((summary?.mdm_without_report_7d ?? 0) > 0) {
+    priorityAlerts.push({
+      severity: "critical",
+      title: `${metricValue(summary?.mdm_without_report_7d)} equipos sin reporte hace 7 días`,
+      href: "/panel/dispositivos",
+    });
+  }
+  if ((summary?.mdm_lock_status_unknown ?? 0) > 0) {
+    priorityAlerts.push({
+      severity: "warning",
+      title: `${metricValue(summary?.mdm_lock_status_unknown)} equipos en Device Reset`,
+      href: "/panel/dispositivos",
+    });
+  }
+  for (const alert of dashboard?.alerts ?? []) {
+    const severity = alert.severity.toLowerCase() === "critical" ? "critical" : "warning";
+    priorityAlerts.push({ severity, title: alert.title, href: alert.href });
+  }
+  const attentionItems = priorityAlerts.slice(0, 2);
+
   return (
-    <div className={styles.page}>
+    <div className={styles.page} data-dashboard>
       <section className={styles.welcome}>
         <div>
           <span className={styles.eyebrow}>CENTRO DE CONTROL</span>
@@ -75,8 +119,9 @@ export default async function PanelPage() {
           <span />
           <div>
             <strong>{dashboard ? "Datos actualizados" : "Datos no disponibles"}</strong>
-            <small>{dashboard ? formatDate(dashboard.generated_at) : "Reintentá en unos minutos"}</small>
+            <small>{dashboard ? formatUpdatedAt(dashboard.generated_at) : "Reintentá en unos minutos"}</small>
           </div>
+          <RefreshIcon />
         </div>
       </section>
 
@@ -84,49 +129,85 @@ export default async function PanelPage() {
 
       <section aria-labelledby="overview-heading">
         <div className={styles.sectionHeading}>
-          <div>
-            <span>VISTA GENERAL</span>
-            <h2 id="overview-heading">Situación actual</h2>
-          </div>
+          <h2 id="overview-heading">Situación actual</h2>
         </div>
-
         <div className={styles.metricGrid}>
           {metrics.map((metric) => (
             <article className={`${styles.metricCard} ${styles[`metricCard--${metric.tone}`]}`} key={metric.label}>
-              <span>{metric.label}</span>
-              <strong>{metric.value}</strong>
-              <small>{metric.detail}</small>
+              <span className={styles.metricIcon}>
+                {metric.tone === "orange" ? <DeviceIcon /> : metric.tone === "purple" ? <LockIcon /> : <AlertTriangleIcon />}
+              </span>
+              <div className={styles.metricContent}>
+                <span>{metric.label}</span>
+                <strong>{metric.value}</strong>
+                <small className={metric.isPositive ? styles.metricDetailPositive : undefined}>
+                  {metric.isPositive ? <CheckIcon /> : null}
+                  {metric.detail}
+                </small>
+              </div>
+              {metric.tone === "red" ? <Link href="/panel/dispositivos">Revisar equipos <ChevronRightIcon /></Link> : null}
             </article>
           ))}
         </div>
       </section>
 
-      <section className={styles.mdmMovements} aria-labelledby="movements-heading">
-        <article className={styles.executionCard}>
+      <section className={styles.operationGrid}>
+        <article className={styles.alertCard} aria-labelledby="attention-heading">
           <div className={styles.cardHeading}>
-            <div>
-              <span>EJECUCIONES</span>
-              <h2 id="movements-heading">Últimos movimientos MDM</h2>
-            </div>
+            <BellIcon />
+            <h2 id="attention-heading">Requiere atención</h2>
           </div>
-
-          {dashboard?.executions.length ? (
-            <div className={styles.executionList}>
-              {dashboard.executions.map((execution) => (
-                <div className={styles.executionItem} key={execution.id}>
-                  <div>
-                    <strong>{execution.title}</strong>
-                    <small>{execution.detail} · {formatDate(execution.created_at)}</small>
-                  </div>
-                  <span className={`${styles.statusPill} ${styles[`statusPill--${statusTone(execution.status)}`]}`}>
-                    {execution.status_label}
+          {attentionItems.length ? (
+            <div className={styles.alertList}>
+              {attentionItems.map((alert) => (
+                <Link
+                  className={`${styles.alertItem} ${alert.severity === "warning" ? styles.alertItemWarning : ""}`}
+                  href={alert.href}
+                  key={`${alert.href}-${alert.title}`}
+                >
+                  <span className={styles.alertIcon}>
+                    {alert.severity === "critical" ? <AlertTriangleIcon /> : <ClockIcon />}
                   </span>
-                </div>
+                  <div>
+                    <strong>{alert.title}</strong>
+                    <small>{alert.severity === "critical" ? "Crítico" : "Pendiente"}</small>
+                  </div>
+                  <span className={styles.alertAction}>{alert.severity === "critical" ? "Ver equipos" : "Revisar"}</span>
+                </Link>
               ))}
             </div>
           ) : (
-            <p className={styles.emptyCopy}>Todavía no hay movimientos MDM para mostrar.</p>
+            <div className={styles.cleanState}>
+              <span><CheckIcon /></span>
+              <div><strong>Todo bajo control</strong><p>No hay alertas operativas pendientes.</p></div>
+            </div>
           )}
+        </article>
+
+        <article className={styles.executionCard} aria-labelledby="movements-heading">
+          <div className={styles.cardHeading}>
+            <ClockIcon />
+            <h2 id="movements-heading">Últimos movimientos MDM</h2>
+            <select aria-label="Filtrar operaciones" defaultValue="all">
+              <option value="all">Todas las operaciones</option>
+            </select>
+          </div>
+          {dashboard?.executions.length ? (
+            <div className={styles.executionList}>
+              {dashboard.executions.slice(0, 4).map((execution) => {
+                const Icon = executionIcon(execution.type);
+                return (
+                  <div className={styles.executionItem} key={execution.id}>
+                    <span className={styles.executionIcon}><Icon /></span>
+                    <div><strong>{execution.title}</strong><small>{formatUpdatedAt(execution.created_at)} · {execution.detail}</small></div>
+                    <span className={`${styles.statusPill} ${styles[`statusPill--${statusTone(execution.status)}`]}`}>{execution.status_label}</span>
+                    <ChevronRightIcon />
+                  </div>
+                );
+              })}
+            </div>
+          ) : <p className={styles.emptyCopy}>Todavía no hay movimientos MDM para mostrar.</p>}
+          <Link className={styles.historyLink} href="/panel/dispositivos/historial">Ver historial completo <ChevronRightIcon /></Link>
         </article>
       </section>
     </div>
