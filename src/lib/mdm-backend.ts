@@ -50,7 +50,7 @@ export function getMdmMessageJobsUrl(
 
 export function getMdmActionJobsUrl(
   jobId?: string,
-  action?: "retry-failures" | "rerun",
+  action?: "events" | "retry-failures" | "rerun",
 ) {
   if (!jobId) return getBackendUrl(DEFAULT_ACTION_JOBS_PATH);
 
