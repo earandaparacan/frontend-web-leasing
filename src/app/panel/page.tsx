@@ -58,6 +58,17 @@ function executionIcon(type: string) {
   return DeviceIcon;
 }
 
+function executionDetailHref(type: string, id: string) {
+  const isMessage = type.toLowerCase().includes("message");
+  const historyPath = isMessage
+    ? "/panel/mensajeria/historial"
+    : "/panel/dispositivos/historial";
+  const prefixedId = `${isMessage ? "message" : "action"}-`;
+  const jobId = id.startsWith(prefixedId) ? id.slice(prefixedId.length) : id;
+
+  return `${historyPath}?ejecucion=${encodeURIComponent(jobId)}`;
+}
+
 export default async function PanelPage() {
   const [user, result] = await Promise.all([getStaffUser(), getOperationalDashboard()]);
   const dashboard = result.dashboard;
@@ -197,12 +208,12 @@ export default async function PanelPage() {
               {dashboard.executions.slice(0, 4).map((execution) => {
                 const Icon = executionIcon(execution.type);
                 return (
-                  <div className={styles.executionItem} key={execution.id}>
+                  <Link className={styles.executionItem} href={executionDetailHref(execution.type, execution.id)} key={execution.id}>
                     <span className={styles.executionIcon}><Icon /></span>
                     <div><strong>{execution.title}</strong><small>{formatUpdatedAt(execution.created_at)} · {execution.detail}</small></div>
                     <span className={`${styles.statusPill} ${styles[`statusPill--${statusTone(execution.status)}`]}`}>{execution.status_label}</span>
                     <ChevronRightIcon />
-                  </div>
+                  </Link>
                 );
               })}
             </div>

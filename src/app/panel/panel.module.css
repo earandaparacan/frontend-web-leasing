@@ -606,6 +606,7 @@
 }
 
 .cardHeading { align-items: center; gap: 15px; }
+.alertCard .cardHeading { justify-content: flex-start; }
 .cardHeading > svg { width: 26px; height: 26px; color: #ff632c; }
 .executionCard .cardHeading > svg { color: #5c4cba; }
 .cardHeading h2 { margin: 0; font-size: 22px; font-weight: 680; }
