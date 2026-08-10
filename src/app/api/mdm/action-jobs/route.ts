@@ -53,13 +53,20 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+  if (payload.action === "lock" && !payload.message?.trim()) {
+    return Response.json(
+      { status: "error", message: "Seleccioná una plantilla antes de bloquear dispositivos." },
+      { status: 400 },
+    );
+  }
   if (
-    typeof payload.branch_id !== "number" ||
-    !Number.isSafeInteger(payload.branch_id) ||
-    payload.branch_id <= 0
+    payload.branch_id !== undefined &&
+    (typeof payload.branch_id !== "number" ||
+      !Number.isSafeInteger(payload.branch_id) ||
+      payload.branch_id <= 0)
   ) {
     return Response.json(
-      { status: "error", message: "Seleccioná una sucursal válida." },
+      { status: "error", message: "La sucursal seleccionada no es válida." },
       { status: 400 },
     );
   }
@@ -74,14 +81,16 @@ export async function POST(request: Request) {
   ] : [];
   const suppliedKey = request.headers.get("idempotency-key")?.trim();
 
+  const branch = payload.branch_id === undefined ? {} : { branch_id: payload.branch_id };
+
   return forwardMdmRequest(
     getMdmActionJobsUrl(),
     {
       scope: payload.scope,
       devices,
       action: payload.action,
-      branch_id: payload.branch_id,
       message: payload.action === "lock" ? payload.message?.trim() ?? "" : "",
+      ...branch,
     },
     30_000,
     "POST",
