@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { CheckIcon, LockIcon, ShieldIcon } from "@/components/icons";
 import {
@@ -124,6 +125,15 @@ function formatJobDate(value: string) {
     dateStyle: "short",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function relativeJobTime(value: string) {
+  const minutes = Math.max(0, Math.round((Date.now() - new Date(value).getTime()) / 60_000));
+  if (minutes < 1) return "Hace instantes";
+  if (minutes < 60) return `Hace ${minutes} min`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `Hace ${hours} h`;
+  return `Hace ${Math.round(hours / 24)} d`;
 }
 
 function escapeSpreadsheetValue(value: string) {
@@ -310,6 +320,34 @@ export function DeviceManagement() {
   }, []);
 
   useEffect(() => {
+    const jobId = new URLSearchParams(window.location.search).get("editarEjecucion");
+    if (!jobId) return;
+
+    async function loadExecutionForEditing() {
+      try {
+        const response = await fetch(`/api/mdm/action-jobs/${encodeURIComponent(jobId)}`, {
+          cache: "no-store",
+        });
+        const data = (await response.json()) as ActionJobResponse;
+        const detail = parseMdmDeviceActionJobDetail(data);
+        if (!response.ok || data.status !== "success" || !detail) {
+          throw new Error(responseMessage(data));
+        }
+        const identifiersToEdit = detail.items.map((item) => item.deviceId);
+        setInput(identifiersToEdit.join("\n"));
+        setMessage(detail.message);
+        setSelectedTemplate(detail.message);
+        setNotice("Revisá los dispositivos, la sucursal y el mensaje antes de ejecutar nuevamente.");
+        await queryDevices(identifiersToEdit, true);
+      } catch (error) {
+        setNotice(error instanceof Error ? error.message : "No se pudo preparar la ejecución para editar.");
+      }
+    }
+
+    void loadExecutionForEditing();
+  }, []);
+
+  useEffect(() => {
     if (jobDetail) historyBackButtonRef.current?.focus();
   }, [jobDetail]);
 
@@ -461,7 +499,10 @@ export function DeviceManagement() {
     ]);
   }
 
-  async function queryDevices(deviceIdentifiers = identifiers) {
+  async function queryDevices(
+    deviceIdentifiers = identifiers,
+    selectFoundDevices = false,
+  ) {
     if (deviceIdentifiers.length === 0) {
       setNotice("Ingresá al menos un IMEI o Device ID.");
       return;
@@ -498,7 +539,15 @@ export function DeviceManagement() {
       }
 
       setDevices(validResults);
-      setSelected(new Set());
+      setSelected(
+        selectFoundDevices
+          ? new Set(
+              validResults
+                .filter((device) => device.found)
+                .map((device) => device.device_id),
+            )
+          : new Set(),
+      );
       const found = validResults.filter((device) => device.found).length;
       addLog(
         `Consulta completada: ${found} encontrado(s) y ${validResults.length - found} sin registro.`,
@@ -887,7 +936,7 @@ export function DeviceManagement() {
         </section>
       ) : null}
 
-      <div className={`${styles.mainColumn} ${styles.actionColumn}`}>
+      <div className={styles.actionColumn}>
       {devices.length > 0 && hasTargets ? (
             <section className={styles.actionPanel}>
               <div className={styles.actionStepHeading}>
@@ -1018,11 +1067,11 @@ export function DeviceManagement() {
         <aside className={styles.historyPreview} aria-labelledby="action-history-heading">
           <div className={styles.historyPreviewHeading}>
             <div>
-              <span>HISTORIAL</span>
               <h2 id="action-history-heading">Últimas ejecuciones</h2>
+              <span><i />Actualizado hace instantes</span>
             </div>
-            <button type="button" onClick={() => void loadJobHistory()} disabled={isLoadingHistory}>
-              {isLoadingHistory ? "Actualizando…" : "Actualizar"}
+            <button type="button" onClick={() => void loadJobHistory()} disabled={isLoadingHistory} aria-label="Actualizar ejecuciones">
+              ↻
             </button>
           </div>
           {isLoadingHistory ? (
@@ -1031,25 +1080,26 @@ export function DeviceManagement() {
             <p className={styles.historyEmpty}>Todavía no hay acciones registradas.</p>
           ) : (
             <div className={styles.historyPreviewList}>
-              {jobHistory.slice(0, 3).map((job) => (
-                <article className={styles.historyPreviewItem} key={job.id}>
-                  <div>
+              {jobHistory.slice(0, 4).map((job) => (
+                <Link className={styles.historyPreviewItem} href={`/panel/dispositivos/historial?ejecucion=${encodeURIComponent(job.id)}`} key={job.id}>
+                  <span className={`${styles.historyPreviewIcon} ${job.action === "lock" ? styles.historyPreviewIconLock : styles.historyPreviewIconUnlock}`}>
+                    {job.action === "lock" ? <LockIcon /> : <UnlockIcon />}
+                  </span>
+                  <div className={styles.historyPreviewContent}>
                     <strong>{job.action === "lock" ? "Bloquear" : "Desbloquear"}</strong>
-                    <small>{mdmDeviceActionJobLabel(job)} · {formatJobDate(job.createdAt)}</small>
+                    <span className={`${styles.historyPreviewStatus} ${job.status === "SUCCEEDED" ? "" : styles.historyPreviewStatusWarning}`}>
+                      {job.status === "SUCCEEDED" ? <CheckIcon /> : "△"} {mdmDeviceActionJobLabel(job)}
+                    </span>
+                    <small>{relativeJobTime(job.createdAt)} · {job.total} equipo{job.total === 1 ? "" : "s"}</small>
                   </div>
-                  <span>{job.total} equipo{job.total === 1 ? "" : "s"}</span>
-                </article>
+                  <span className={styles.historyPreviewArrow}>›</span>
+                </Link>
               ))}
             </div>
           )}
-          <button
-            ref={historyTriggerRef}
-            className={styles.historyPreviewLink}
-            type="button"
-            onClick={() => setIsHistoryDrawerOpen(true)}
-          >
+          <Link className={styles.historyPreviewLink} href="/panel/dispositivos/historial">
             Ver historial completo
-          </button>
+          </Link>
         </aside>
       </div>
 

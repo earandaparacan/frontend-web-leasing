@@ -351,6 +351,39 @@ export function MdmMessaging() {
   }, []);
 
   useEffect(() => {
+    const jobId = new URLSearchParams(window.location.search).get("editarEjecucion");
+    if (!jobId) return;
+
+    async function loadExecutionForEditing() {
+      try {
+        const response = await fetch(`/api/mdm/message-jobs/${encodeURIComponent(jobId)}`, {
+          cache: "no-store",
+        });
+        const data = (await response.json()) as ApiResponse;
+        const detail = parseMessageJobDetail(data);
+        if (!response.ok || data.status !== "success" || !detail) {
+          throw new Error(responseMessage(data));
+        }
+        setTargetMode("devices");
+        handleIdentifierChange(detail.items.map((item) => item.deviceId).join("\n"));
+        setMessage(detail.message);
+        setSelectedTemplate(detail.message);
+        setNotice({
+          tone: "success",
+          text: "La ejecución fue cargada. Verificá los dispositivos, la sucursal y el mensaje antes de enviar.",
+        });
+      } catch (error) {
+        setNotice({
+          tone: "error",
+          text: error instanceof Error ? error.message : "No se pudo preparar el envío para editar.",
+        });
+      }
+    }
+
+    void loadExecutionForEditing();
+  }, []);
+
+  useEffect(() => {
     const controller = new AbortController();
 
     async function loadBranches() {
@@ -1441,25 +1474,20 @@ export function MdmMessaging() {
               <p className={styles.historyEmpty}>Todavía no hay envíos registrados.</p>
             ) : (
               <div className={styles.historyPreviewList}>
-                {jobHistory.slice(0, 3).map((job) => (
-                  <article className={styles.historyPreviewItem} key={job.id}>
+                {jobHistory.slice(0, 4).map((job) => (
+                  <Link className={styles.historyPreviewItem} href={`/panel/mensajeria/historial?ejecucion=${encodeURIComponent(job.id)}`} key={job.id}>
                     <div>
                       <strong>{messageJobStatusLabel(job.status)}</strong>
                       <small>{formatJobDate(job.createdAt)}</small>
                     </div>
                     <span>{job.total} equipo{job.total === 1 ? "" : "s"}</span>
-                  </article>
+                  </Link>
                 ))}
               </div>
             )}
-            <button
-              ref={historyTriggerRef}
-              className={styles.historyPreviewLink}
-              type="button"
-              onClick={() => setIsHistoryDrawerOpen(true)}
-            >
+            <Link className={styles.historyPreviewLink} href="/panel/mensajeria/historial">
               Ver historial completo
-            </button>
+            </Link>
           </section>
 
         </aside>
