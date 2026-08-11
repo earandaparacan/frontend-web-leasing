@@ -110,7 +110,7 @@
   min-height: 165px;
   align-content: start;
   padding: 20px;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid #e5e5e5;
   border-radius: 16px;
   background: #fff;
@@ -545,6 +545,102 @@
   font-weight: 650;
 }
 
+.metricLabel {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.tooltipWrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.tooltipWrapper--red .tooltipPanel {
+  right: -30px;
+  left: auto;
+}
+
+.tooltip {
+  display: inline-grid;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  flex: 0 0 18px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  color: #777b87;
+  background: transparent;
+  cursor: help;
+  outline: none;
+}
+
+.tooltip svg { width: 16px; height: 16px; }
+
+.tooltip:focus-visible { box-shadow: 0 0 0 3px rgba(93, 72, 178, 0.24); }
+
+.tooltipPanel {
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + 14px);
+  left: -30px;
+  display: none;
+  width: min(380px, calc(100vw - 48px));
+  padding: 20px;
+  border: 1px solid #e2e3e7;
+  border-radius: 16px;
+  color: #25324a;
+  background: #fff;
+  box-shadow: 0 14px 30px rgba(20, 28, 45, 0.16);
+}
+
+.tooltipWrapper:hover .tooltipPanel,
+.tooltipWrapper:focus-within .tooltipPanel {
+  display: grid;
+  gap: 18px;
+}
+
+.tooltipSection {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  font-size: 15px;
+  font-weight: 540;
+  line-height: 1.48;
+}
+
+.tooltipSection > span:last-child {
+  display: grid;
+  gap: 4px;
+}
+
+.tooltipSection strong {
+  color: #17243a;
+  font-family: "Urbanist Variable", Urbanist, sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.tooltipIcon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: 50%;
+  color: #f36322;
+  background: #fff0e8;
+}
+
+.tooltipIcon svg { width: 26px; height: 26px; }
+
+.tooltipDivider {
+  height: 1px;
+  background: #e3e5e8;
+}
+
 .metricContent > strong {
   margin-top: 10px;
   font-family: "Urbanist Variable", Urbanist, sans-serif;
@@ -707,6 +803,8 @@
 @media (max-width: 460px) {
   .metricCard { gap: 14px; }
   .metricIcon { flex-basis: 48px; width: 48px; height: 48px; }
+  .tooltipPanel { left: -20px; }
+  .tooltipWrapper--red .tooltipPanel { right: -20px; left: auto; }
   .alertItem { grid-template-columns: 40px minmax(0, 1fr); padding: 14px; }
   .alertIcon { width: 40px; height: 40px; }
   .alertItem > b { display: none; }

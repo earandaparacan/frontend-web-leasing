@@ -54,7 +54,7 @@ function downloadSummary(detail: MdmDeviceActionJobDetail | MessageJobDetail, is
   URL.revokeObjectURL(url);
 }
 
-export function ExecutionHistory({ kind, initialJobId = "" }: { kind: Kind; initialJobId?: string }) {
+export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJobId = "" }: { kind: Kind; initialAttentionOnly?: boolean; initialJobId?: string }) {
   const isAction = kind === "actions";
   const baseUrl = isAction ? "/api/mdm/action-jobs" : "/api/mdm/message-jobs";
   const editUrl = isAction ? "/panel/dispositivos" : "/panel/mensajeria";
@@ -69,7 +69,7 @@ export function ExecutionHistory({ kind, initialJobId = "" }: { kind: Kind; init
   const [notice, setNotice] = useState("");
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(initialAttentionOnly ? "attention" : "all");
   const [period, setPeriod] = useState("30");
   const [page, setPage] = useState(1);
   const [menuJobId, setMenuJobId] = useState("");
@@ -148,7 +148,9 @@ export function ExecutionHistory({ kind, initialJobId = "" }: { kind: Kind; init
     return jobs.filter((job) => {
       const matchesSearch = !term || [action(job), label(job), job.branchName, job.id].some((value) => value.toLowerCase().includes(term));
       const matchesAction = actionFilter === "all" || action(job).toLowerCase() === actionFilter;
-      const matchesStatus = statusFilter === "all" || status(job) === statusFilter;
+      const matchesStatus = statusFilter === "all"
+        || (statusFilter === "attention" && ["QUEUED", "RUNNING", "PARTIAL_SUCCESS", "FAILED"].includes(status(job)))
+        || status(job) === statusFilter;
       const matchesPeriod = periodMs === null || Date.now() - new Date(job.createdAt).getTime() <= periodMs;
       return matchesSearch && matchesAction && matchesStatus && matchesPeriod;
     });
@@ -193,7 +195,7 @@ export function ExecutionHistory({ kind, initialJobId = "" }: { kind: Kind; init
           <section className={styles.filters} aria-label="Filtros del historial">
             <label className={styles.search}><span aria-hidden="true">⌕</span><input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Buscar ejecución" /></label>
             {isAction ? <select value={actionFilter} onChange={(event) => { setActionFilter(event.target.value); setPage(1); }} aria-label="Filtrar por acción"><option value="all">Todas las acciones</option><option value="bloquear">Bloquear</option><option value="desbloquear">Desbloquear</option></select> : null}
-            <select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }} aria-label="Filtrar por estado"><option value="all">Todos los estados</option><option value="SUCCEEDED">Completado</option><option value="PARTIAL_SUCCESS">Completado con errores</option><option value="FAILED">Fallido</option><option value="QUEUED">En cola</option><option value="RUNNING">En proceso</option></select>
+            <select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }} aria-label="Filtrar por estado"><option value="all">Todos los estados</option><option value="attention">Requieren seguimiento</option><option value="SUCCEEDED">Completado</option><option value="PARTIAL_SUCCESS">Completado con errores</option><option value="FAILED">Fallido</option><option value="QUEUED">En cola</option><option value="RUNNING">En proceso</option></select>
             <select value={period} onChange={(event) => { setPeriod(event.target.value); setPage(1); }} aria-label="Filtrar por fecha"><option value="7">Últimos 7 días</option><option value="30">Últimos 30 días</option><option value="all">Todo el historial</option></select>
           </section>
           {loading ? <p className={styles.empty}>Cargando ejecuciones…</p> : jobs.length === 0 ? <p className={styles.empty}>Todavía no hay ejecuciones registradas.</p> : visibleJobs.length === 0 ? <p className={styles.empty}>No hay ejecuciones que coincidan con los filtros.</p> : (

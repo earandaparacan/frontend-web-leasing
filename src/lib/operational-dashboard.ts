@@ -9,6 +9,9 @@ export type DashboardSummary = {
   mdm_locked: number | null;
   mdm_unlocked: number | null;
   mdm_lock_status_unknown?: number | null;
+  mdm_action_attention: number;
+  mdm_action_pending: number;
+  mdm_action_failed: number;
   mdm_without_report_24h?: number | null;
   mdm_without_report_7d?: number | null;
   mdm_in_progress: number;
@@ -73,6 +76,12 @@ function isSummary(value: unknown): value is DashboardSummary {
     isNullableNumber(value.mdm_locked) &&
     isNullableNumber(value.mdm_unlocked) &&
     (value.mdm_lock_status_unknown === undefined || isNullableNumber(value.mdm_lock_status_unknown)) &&
+    typeof value.mdm_action_attention === "number" &&
+    Number.isFinite(value.mdm_action_attention) &&
+    typeof value.mdm_action_pending === "number" &&
+    Number.isFinite(value.mdm_action_pending) &&
+    typeof value.mdm_action_failed === "number" &&
+    Number.isFinite(value.mdm_action_failed) &&
     (value.mdm_without_report_24h === undefined || isNullableNumber(value.mdm_without_report_24h)) &&
     (value.mdm_without_report_7d === undefined || isNullableNumber(value.mdm_without_report_7d)) &&
     typeof value.mdm_in_progress === "number" &&

@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { getBackendUrl, readBackendJson } from "@/lib/backend";
 
 const DEFAULT_QUERY_PATH = "/api/v1/mdm/devices/query";
+const DEFAULT_WITHOUT_REPORT_PATH = "/api/v1/mdm/devices/without-report";
 const DEFAULT_ACTION_PATH = "/api/v1/mdm/devices/action";
 const DEFAULT_GROUPS_PATH = "/api/v1/mdm/groups";
 const DEFAULT_BRANCHES_PATH = "/api/v1/mdm/branches";
@@ -27,6 +28,10 @@ function getMdmBackendUrl(path: string) {
 export function getMdmQueryUrl() {
   const fallback = process.env.MDM_BACKEND_URL ? LEGACY_QUERY_PATH : DEFAULT_QUERY_PATH;
   return getMdmBackendUrl(configuredPath(process.env.MDM_QUERY_PATH, fallback));
+}
+
+export function getMdmWithoutReportUrl(period: "24h" | "7d") {
+  return getBackendUrl(`${DEFAULT_WITHOUT_REPORT_PATH}?period=${period}`);
 }
 
 export function getMdmActionUrl() {

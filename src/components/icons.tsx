@@ -73,6 +73,10 @@ export function AlertTriangleIcon(props: IconProps) {
   return <svg {...sharedProps} {...props}><path d="m10.3 3.9-8.1 14A2 2 0 0 0 3.9 21h16.2a2 2 0 0 0 1.7-3.1l-8.1-14a2 2 0 0 0-3.4 0Z" /><path d="M12 9v4M12 17h.01" /></svg>;
 }
 
+export function InfoIcon(props: IconProps) {
+  return <svg {...sharedProps} {...props}><circle cx="12" cy="12" r="9" /><path d="M12 10v6M12 7h.01" /></svg>;
+}
+
 export function DashboardIcon(props: IconProps) {
   return (
     <svg {...sharedProps} {...props}>

@@ -7,9 +7,11 @@ import {
   ChevronRightIcon,
   ClockIcon,
   DeviceIcon,
+  InfoIcon,
   LockIcon,
   MessageIcon,
   RefreshIcon,
+  ShieldIcon,
 } from "@/components/icons";
 import { getOperationalDashboard } from "@/lib/operational-dashboard";
 import { getStaffUser } from "@/lib/staff-session";
@@ -78,20 +80,26 @@ export default async function PanelPage() {
       label: "Flota MDM",
       value: metricValue(summary?.mdm_devices),
       detail: `${metricValue(summary?.mdm_devices)} equipos administrados`,
+      helpText: "Cantidad total de equipos que la empresa administra desde esta plataforma. Permite conocer el tamaño de la flota bajo control.",
+      helpDetail: "Incluye dispositivos activos y en gestión.",
       tone: "orange",
       isPositive: true,
     },
     {
       label: "Bloqueados / desbloqueados",
       value: `${metricValue(summary?.mdm_locked)} / ${metricValue(summary?.mdm_unlocked)}`,
-      detail: `${metricValue(summary?.mdm_lock_status_unknown)} en Device Reset`,
+      detail: `${metricValue(summary?.mdm_action_attention)} operaciones requieren seguimiento`,
+      helpText: "Resume el último estado de bloqueo informado por los dispositivos; no representa su disponibilidad u operatividad actual.",
+      helpDetail: "Refleja el estado operativo más reciente de los equipos.",
       tone: "purple",
       isPositive: false,
     },
     {
-      label: "Equipos sin reporte",
+      label: "Sin reporte en las últimas 24 h",
       value: metricValue(summary?.mdm_without_report_24h),
       detail: `${metricValue(summary?.mdm_without_report_7d)} sin reporte hace 7 días`,
+      helpText: "Equipos que no se han comunicado con la plataforma en las últimas 24 horas. Si pasan 7 días sin reportar, conviene revisarlos porque podrían estar sin conexión, apagados o fuera de uso.",
+      helpDetail: "Ayuda a priorizar los equipos que requieren seguimiento.",
       tone: "red",
       isPositive: false,
     },
@@ -102,14 +110,14 @@ export default async function PanelPage() {
     priorityAlerts.push({
       severity: "critical",
       title: `${metricValue(summary?.mdm_without_report_7d)} equipos sin reporte hace 7 días`,
-      href: "/panel/dispositivos",
+      href: "/panel/equipos-sin-reporte?tipo=sin-reporte-7d",
     });
   }
-  if ((summary?.mdm_lock_status_unknown ?? 0) > 0) {
+  if ((summary?.mdm_action_attention ?? 0) > 0) {
     priorityAlerts.push({
       severity: "warning",
-      title: `${metricValue(summary?.mdm_lock_status_unknown)} equipos en Device Reset`,
-      href: "/panel/dispositivos",
+      title: `${metricValue(summary?.mdm_action_attention)} operaciones de bloqueo por revisar`,
+      href: "/panel/dispositivos/historial?filtro=atencion",
     });
   }
   for (const alert of dashboard?.alerts ?? []) {
@@ -149,14 +157,40 @@ export default async function PanelPage() {
                 {metric.tone === "orange" ? <DeviceIcon /> : metric.tone === "purple" ? <LockIcon /> : <AlertTriangleIcon />}
               </span>
               <div className={styles.metricContent}>
-                <span>{metric.label}</span>
+                <span className={styles.metricLabel}>
+                  {metric.label}
+                  <span className={`${styles.tooltipWrapper} ${styles[`tooltipWrapper--${metric.tone}`]}`}>
+                    <button
+                      aria-describedby={`metric-help-${metric.tone}`}
+                      aria-label={`Más información sobre ${metric.label}`}
+                      className={styles.tooltip}
+                      type="button"
+                    >
+                      <InfoIcon />
+                    </button>
+                    <span className={styles.tooltipPanel} id={`metric-help-${metric.tone}`} role="tooltip">
+                      <span className={styles.tooltipSection}>
+                        <span className={styles.tooltipIcon}><InfoIcon /></span>
+                        <span>
+                          <strong>Sobre {metric.label}</strong>
+                          <span>{metric.helpText}</span>
+                        </span>
+                      </span>
+                      <span className={styles.tooltipDivider} />
+                      <span className={styles.tooltipSection}>
+                        <span className={styles.tooltipIcon}><ShieldIcon /></span>
+                        <span>{metric.helpDetail}</span>
+                      </span>
+                    </span>
+                  </span>
+                </span>
                 <strong>{metric.value}</strong>
                 <small className={metric.isPositive ? styles.metricDetailPositive : undefined}>
                   {metric.isPositive ? <CheckIcon /> : null}
                   {metric.detail}
                 </small>
               </div>
-              {metric.tone === "red" ? <Link href="/panel/dispositivos">Revisar equipos <ChevronRightIcon /></Link> : null}
+              {metric.tone === "red" ? <Link href="/panel/equipos-sin-reporte">Revisar equipos <ChevronRightIcon /></Link> : null}
             </article>
           ))}
         </div>
