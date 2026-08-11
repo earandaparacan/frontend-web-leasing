@@ -43,6 +43,11 @@ type MdmBranch = {
   name: string;
 };
 
+type BranchToRestore = {
+  id: number | null;
+  name: string;
+};
+
 type MdmCapabilities = {
   max_specific_devices: number;
   query_batch_size: number;
@@ -222,6 +227,7 @@ export function MdmMessaging() {
   const [selectedGroupId, setSelectedGroupId] = useState("");
   const [branches, setBranches] = useState<MdmBranch[]>([]);
   const [branchId, setBranchId] = useState("");
+  const [branchToRestore, setBranchToRestore] = useState<BranchToRestore | null>(null);
   const [isLoadingBranches, setIsLoadingBranches] = useState(true);
   const [message, setMessage] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState("");
@@ -276,6 +282,13 @@ export function MdmMessaging() {
     (device) => device.device_id,
   );
   const selectedGroup = groups.find((group) => group.id === Number(selectedGroupId));
+  const restoredBranch = branchToRestore
+    ? branches.find((branch) => branch.id === branchToRestore.id)
+      ?? branches.find(
+        (branch) => branch.name.trim().toLocaleLowerCase() === branchToRestore.name.trim().toLocaleLowerCase(),
+      )
+    : undefined;
+  const selectedBranchValue = branchId || (restoredBranch ? String(restoredBranch.id) : "");
   const canComposeMessage =
     targetMode === "devices"
       ? selectedDevices.length > 0
@@ -382,6 +395,7 @@ export function MdmMessaging() {
         handleIdentifierChange(identifiersToEdit.join("\n"));
         setMessage(detail.message);
         setSelectedTemplate(detail.message);
+        setBranchToRestore({ id: detail.branchId, name: detail.branchName });
         setNotice({
           tone: "success",
           text: "La ejecución fue cargada. Verificando y seleccionando los dispositivos encontrados…",
@@ -788,7 +802,7 @@ export function MdmMessaging() {
 
   async function sendMessage() {
     const cleanMessage = message.trim();
-    const selectedBranchId = Number(branchId);
+    const selectedBranchId = Number(selectedBranchValue);
 
     if (!capabilities) {
       setNotice({ tone: "error", text: "La configuración MDM todavía está cargando." });
@@ -1296,9 +1310,10 @@ export function MdmMessaging() {
                 <label>
                   <span>Sucursal</span>
                   <select
-                    value={branchId}
+                    value={selectedBranchValue}
                     onChange={(event) => {
                       setBranchId(event.target.value);
+                      setBranchToRestore(null);
                       setNotice(null);
                     }}
                     disabled={isLoadingBranches || isSending}
@@ -1411,7 +1426,7 @@ export function MdmMessaging() {
                   (targetMode === "devices" && selectedDevices.length === 0) ||
                   (targetMode === "group" && !selectedGroup) ||
                   !message.trim() ||
-                  !branchId ||
+                  !selectedBranchValue ||
                   isSending ||
                   isVerifying ||
                   isLoadingGroups ||

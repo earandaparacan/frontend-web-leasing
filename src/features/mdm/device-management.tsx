@@ -69,6 +69,11 @@ type MdmBranch = {
   name: string;
 };
 
+type BranchToRestore = {
+  id: number | null;
+  name: string;
+};
+
 type BranchResponse = {
   status?: string;
   branches?: unknown;
@@ -205,6 +210,7 @@ export function DeviceManagement() {
   const [templates, setTemplates] = useState<string[]>([]);
   const [branches, setBranches] = useState<MdmBranch[]>([]);
   const [branchId, setBranchId] = useState("");
+  const [branchToRestore, setBranchToRestore] = useState<BranchToRestore | null>(null);
   const [isLoadingBranches, setIsLoadingBranches] = useState(true);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
@@ -253,6 +259,13 @@ export function DeviceManagement() {
   const actionDevices = [...selectedDevices, ...notFoundDevices];
   const hasTargets = actionDevices.length > 0;
   const actionInProgress = Boolean(activeJob && !isTerminalMdmDeviceActionJob(activeJob));
+  const restoredBranch = branchToRestore
+    ? branches.find((branch) => branch.id === branchToRestore.id)
+      ?? branches.find(
+        (branch) => branch.name.trim().toLocaleLowerCase() === branchToRestore.name.trim().toLocaleLowerCase(),
+      )
+    : undefined;
+  const selectedBranchValue = branchId || (restoredBranch ? String(restoredBranch.id) : "");
   const allVisibleSelected =
     visibleDevices.some((device) => device.found) &&
     visibleDevices.filter((device) => device.found).every((device) => selected.has(device.device_id));
@@ -340,6 +353,7 @@ export function DeviceManagement() {
         setInput(identifiersToEdit.join("\n"));
         setMessage(detail.message);
         setSelectedTemplate(detail.message);
+        setBranchToRestore({ id: detail.branchId, name: detail.branchName });
         setNotice("Revisá los dispositivos, la sucursal y el mensaje antes de ejecutar nuevamente.");
         await queryDevices(identifiersToEdit, true);
       } catch (error) {
@@ -684,7 +698,7 @@ export function DeviceManagement() {
       setNotice("Seleccioná una plantilla antes de bloquear dispositivos.");
       return;
     }
-    const selectedBranchId = branchId ? Number(branchId) : undefined;
+    const selectedBranchId = selectedBranchValue ? Number(selectedBranchValue) : undefined;
     const actionLabel = action === "lock" ? "bloquear" : "desbloquear";
     const targetLabel = `${actionDevices.length} identificador(es)`;
     setPendingAction(action);
@@ -983,8 +997,11 @@ export function DeviceManagement() {
                 <label>
                   <span>Sucursal (opcional)</span>
                   <select
-                    value={branchId}
-                    onChange={(event) => setBranchId(event.target.value)}
+                    value={selectedBranchValue}
+                    onChange={(event) => {
+                      setBranchId(event.target.value);
+                      setBranchToRestore(null);
+                    }}
                     disabled={isLoadingBranches || pendingAction !== null}
                   >
                     <option value="">

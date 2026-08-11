@@ -214,10 +214,11 @@
 
 .deviceSearch svg { flex: 0 0 17px; width: 17px; height: 17px; margin-top: 2px; }
 .deviceSearch textarea {
+  align-self: stretch;
   width: 100%;
   min-height: 150px;
   flex: 1 1 auto;
-  resize: vertical;
+  resize: none;
   border: 0;
   outline: 0;
   color: #333;

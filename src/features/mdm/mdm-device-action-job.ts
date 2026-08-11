@@ -7,6 +7,7 @@ export type MdmDeviceActionJobStatus =
 
 export type MdmDeviceActionJob = {
   id: string;
+  branchId: number | null;
   branchName: string;
   createdAt: string;
   rerunOf: string | null;
@@ -41,12 +42,18 @@ function isNonNegativeInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 }
 
+function isBranchId(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0;
+}
+
 export function parseMdmDeviceActionJob(value: unknown): MdmDeviceActionJob | null {
   if (typeof value !== "object" || value === null) return null;
   const job = value as Record<string, unknown>;
+  const branchId = job.branch_id;
   if (
     typeof job.id !== "string" ||
     typeof job.branch_name !== "string" ||
+    (branchId !== undefined && branchId !== null && !isBranchId(branchId)) ||
     typeof job.created_at !== "string" ||
     Number.isNaN(Date.parse(job.created_at)) ||
     (job.rerun_of !== null && typeof job.rerun_of !== "string") ||
@@ -64,6 +71,7 @@ export function parseMdmDeviceActionJob(value: unknown): MdmDeviceActionJob | nu
 
   return {
     id: job.id,
+    branchId: isBranchId(branchId) ? branchId : null,
     branchName: job.branch_name,
     createdAt: job.created_at,
     rerunOf: typeof job.rerun_of === "string" ? job.rerun_of : null,

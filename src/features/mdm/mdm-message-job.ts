@@ -12,6 +12,7 @@ export type MessageJobStatus = (typeof messageJobStatuses)[number];
 
 export type MessageJob = {
   id: string;
+  branchId: number | null;
   branchName: string;
   createdAt: string;
   rerunOf: string | null;
@@ -46,6 +47,10 @@ function isCount(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 }
 
+function isBranchId(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0;
+}
+
 function isMessageJobStatus(value: unknown): value is MessageJobStatus {
   return typeof value === "string" && messageJobStatuses.some((status) => status === value);
 }
@@ -54,10 +59,12 @@ export function parseMessageJob(value: unknown): MessageJob | null {
   if (!isRecord(value)) return null;
 
   const candidate = isRecord(value.job) ? value.job : value;
+  const branchId = candidate.branch_id;
   if (
     typeof candidate.id !== "string" ||
     candidate.id.length === 0 ||
     typeof candidate.branch_name !== "string" ||
+    (branchId !== undefined && branchId !== null && !isBranchId(branchId)) ||
     typeof candidate.created_at !== "string" ||
     Number.isNaN(Date.parse(candidate.created_at)) ||
     (candidate.rerun_of !== null && typeof candidate.rerun_of !== "string") ||
@@ -72,6 +79,7 @@ export function parseMessageJob(value: unknown): MessageJob | null {
 
   return {
     id: candidate.id,
+    branchId: isBranchId(branchId) ? branchId : null,
     branchName: candidate.branch_name,
     createdAt: candidate.created_at,
     rerunOf: typeof candidate.rerun_of === "string" ? candidate.rerun_of : null,
