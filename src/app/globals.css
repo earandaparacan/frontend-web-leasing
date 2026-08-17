@@ -59,6 +59,42 @@ a {
   border: 0;
 }
 
+.scroll-navigation {
+  position: fixed;
+  z-index: 20;
+  right: 24px;
+  bottom: 24px;
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  color: #fff;
+  background: var(--brand-orange);
+  box-shadow: 0 12px 26px -12px rgba(118, 43, 20, 0.75);
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.scroll-navigation:hover {
+  transform: translateY(-2px);
+  background: var(--brand-orange-hover);
+  box-shadow: 0 16px 28px -12px rgba(118, 43, 20, 0.82);
+}
+
+.scroll-navigation:active {
+  transform: translateY(0);
+}
+
+.scroll-navigation svg {
+  width: 22px;
+  height: 22px;
+}
+
 .workspace-shell {
   min-height: 100svh;
   background:
@@ -798,6 +834,13 @@ a:focus-visible {
 }
 
 @media (max-width: 520px) {
+  .scroll-navigation {
+    right: 16px;
+    bottom: 16px;
+    width: 42px;
+    height: 42px;
+  }
+
   .mobile-header {
     padding-top: 22px;
   }
