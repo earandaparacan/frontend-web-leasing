@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
+import { CloseIcon, DownloadIcon, InfoIcon } from "@/components/icons";
 import {
   isTerminalMdmDeviceActionJob,
   mdmDeviceActionJobItemLabel,
@@ -54,6 +55,52 @@ function downloadSummary(detail: MdmDeviceActionJobDetail | MessageJobDetail, is
   URL.revokeObjectURL(url);
 }
 
+function formatDateForInput(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function escapeSpreadsheetValue(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+function downloadHistory(details: Array<MdmDeviceActionJobDetail | MessageJobDetail>, isAction: boolean) {
+  const headers = ["IMEI", "Acción", "Estado", "Exitoso", "Fecha", "Sucursal", "Intentos", "Error", "Ejecución"];
+  const rows = [
+    ...details.flatMap((job) => job.items.map((item) => [
+      item.deviceId,
+      isAction ? ((job as MdmDeviceActionJobDetail).action === "lock" ? "Bloquear" : "Desbloquear") : "Mensaje",
+      isAction ? mdmDeviceActionJobItemLabel(item.status) : messageJobItemStatusLabel(item.status),
+      item.status === (isAction ? "SUCCEEDED" : "ACCEPTED") ? "Sí" : "No",
+      formatDate(job.createdAt),
+      job.branchName || "Sin sucursal",
+      String(item.attempts),
+      item.lastError,
+      job.id,
+    ])),
+  ];
+  const spreadsheet = `<!doctype html><html><head><meta charset="utf-8"><style>
+    table { border-collapse: collapse; font-family: Calibri, Arial, sans-serif; font-size: 11pt; }
+    th { padding: 9px 12px; border: 1px solid #2f5597; color: #fff; background: #305496; font-weight: 700; text-align: left; }
+    td { padding: 7px 12px; border: 1px solid #d9e2f3; vertical-align: top; }
+    tbody tr:nth-child(even) { background: #eaf2f8; }
+    .imei { mso-number-format: "\\@"; }
+    .number { mso-number-format: "0"; text-align: right; }
+  </style></head><body><table><thead><tr>${headers.map((header) => `<th>${header}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${row.map((value, index) => `<td class="${index === 0 ? "imei" : index === 6 ? "number" : ""}">${escapeSpreadsheetValue(value)}</td>`).join("")}</tr>`).join("")}</tbody></table></body></html>`;
+  const url = URL.createObjectURL(new Blob([`\ufeff${spreadsheet}`], { type: "application/vnd.ms-excel;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `historial-${isAction ? "bloqueo-desbloqueo" : "mensajeria"}-${formatDateForInput(new Date())}.xls`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJobId = "" }: { kind: Kind; initialAttentionOnly?: boolean; initialJobId?: string }) {
   const isAction = kind === "actions";
   const baseUrl = isAction ? "/api/mdm/action-jobs" : "/api/mdm/message-jobs";
@@ -73,6 +120,12 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
   const [period, setPeriod] = useState("30");
   const [page, setPage] = useState(1);
   const [menuJobId, setMenuJobId] = useState("");
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const [exportPeriodType, setExportPeriodType] = useState<"date" | "range">("date");
+  const [exportDate, setExportDate] = useState("");
+  const [exportStartDate, setExportStartDate] = useState("");
+  const [exportEndDate, setExportEndDate] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
 
   const loadJobs = useCallback(async () => {
     setLoading(true);
@@ -159,6 +212,41 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
   const totalPages = Math.max(1, Math.ceil(visibleJobs.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const pagedJobs = visibleJobs.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const hasValidExportPeriod = exportPeriodType === "date"
+    ? Boolean(exportDate)
+    : Boolean(exportStartDate && exportEndDate && exportStartDate <= exportEndDate);
+
+  function closeExportDialog() { setIsExportOpen(false); }
+
+  async function handleExport() {
+    const selectedJobs = visibleJobs.filter((job) => {
+      const jobDate = formatDateForInput(new Date(job.createdAt));
+      if (exportPeriodType === "date") return !exportDate || jobDate === exportDate;
+      return (!exportStartDate || jobDate >= exportStartDate) && (!exportEndDate || jobDate <= exportEndDate);
+    });
+    if (selectedJobs.length === 0) {
+      setNotice("No hay ejecuciones para exportar en el período seleccionado.");
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const details = await Promise.all(selectedJobs.map(async (job) => {
+        const response = await fetch(`${baseUrl}/${encodeURIComponent(job.id)}`, { cache: "no-store" });
+        const data = (await response.json()) as ApiResponse;
+        const parsed = isAction ? parseMdmDeviceActionJobDetail(data) : parseMessageJobDetail(data);
+        if (!response.ok || data.status !== "success" || !parsed) throw new Error(errorMessage(data));
+        return parsed;
+      }));
+      downloadHistory(details, isAction);
+      closeExportDialog();
+      setNotice("El archivo Excel con el detalle por IMEI se descargó correctamente.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "No se pudo generar el archivo Excel.");
+    } finally {
+      setIsExporting(false);
+    }
+  }
 
   return (
     <div className={`${styles.page} workspace-page`}>
@@ -197,6 +285,7 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
             {isAction ? <select value={actionFilter} onChange={(event) => { setActionFilter(event.target.value); setPage(1); }} aria-label="Filtrar por acción"><option value="all">Todas las acciones</option><option value="bloquear">Bloquear</option><option value="desbloquear">Desbloquear</option></select> : null}
             <select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }} aria-label="Filtrar por estado"><option value="all">Todos los estados</option><option value="attention">Requieren seguimiento</option><option value="SUCCEEDED">Completado</option><option value="PARTIAL_SUCCESS">Completado con errores</option><option value="FAILED">Fallido</option><option value="QUEUED">En cola</option><option value="RUNNING">En proceso</option></select>
             <select value={period} onChange={(event) => { setPeriod(event.target.value); setPage(1); }} aria-label="Filtrar por fecha"><option value="7">Últimos 7 días</option><option value="30">Últimos 30 días</option><option value="all">Todo el historial</option></select>
+            <button className={styles.exportButton} type="button" onClick={() => setIsExportOpen(true)}><DownloadIcon />Exportar a Excel</button>
           </section>
           {loading ? <p className={styles.empty}>Cargando ejecuciones…</p> : jobs.length === 0 ? <p className={styles.empty}>Todavía no hay ejecuciones registradas.</p> : visibleJobs.length === 0 ? <p className={styles.empty}>No hay ejecuciones que coincidan con los filtros.</p> : (
             <section className={styles.tableWrap} aria-label="Ejecuciones registradas">
@@ -224,6 +313,32 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
           void rerun(jobId);
         }}
       />
+      {isExportOpen ? (
+        <div className={styles.exportOverlay} role="presentation" onMouseDown={closeExportDialog}>
+          <section className={styles.exportDialog} role="dialog" aria-modal="true" aria-labelledby="export-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div className={styles.exportDialogHeader}>
+              <h2 id="export-title">Exportar historial a Excel</h2>
+              <button type="button" onClick={closeExportDialog} aria-label="Cerrar"><CloseIcon /></button>
+            </div>
+            <p>Seleccioná el período que deseás exportar. El archivo incluirá las ejecuciones que coincidan con los filtros aplicados actualmente.</p>
+            <fieldset className={styles.periodType}>
+              <legend>Tipo de período</legend>
+              <label><input type="radio" name="export-period" checked={exportPeriodType === "date"} onChange={() => setExportPeriodType("date")} />Fecha específica</label>
+              <label><input type="radio" name="export-period" checked={exportPeriodType === "range"} onChange={() => setExportPeriodType("range")} />Rango de fechas</label>
+            </fieldset>
+            {exportPeriodType === "date" ? (
+              <label className={styles.dateField}><span>Seleccioná la fecha</span><input type="date" value={exportDate} onChange={(event) => setExportDate(event.target.value)} /></label>
+            ) : (
+              <div className={styles.dateRange}>
+                <label className={styles.dateField}><span>Desde</span><input type="date" value={exportStartDate} onChange={(event) => setExportStartDate(event.target.value)} /></label>
+                <label className={styles.dateField}><span>Hasta</span><input type="date" min={exportStartDate || undefined} value={exportEndDate} onChange={(event) => setExportEndDate(event.target.value)} /></label>
+              </div>
+            )}
+            <p className={styles.exportInfo}><InfoIcon />Se generará un archivo Excel con los resultados del historial según los filtros aplicados actualmente.</p>
+            <footer className={styles.exportFooter}><button type="button" onClick={closeExportDialog} disabled={isExporting}>Cancelar</button><button type="button" onClick={() => void handleExport()} disabled={!hasValidExportPeriod || isExporting}>{isExporting ? "Exportando…" : "Exportar"}</button></footer>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }

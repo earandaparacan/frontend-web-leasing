@@ -77,6 +77,10 @@ export function InfoIcon(props: IconProps) {
   return <svg {...sharedProps} {...props}><circle cx="12" cy="12" r="9" /><path d="M12 10v6M12 7h.01" /></svg>;
 }
 
+export function DownloadIcon(props: IconProps) {
+  return <svg {...sharedProps} {...props}><path d="M12 3v12M7 10l5 5 5-5M5 21h14" /></svg>;
+}
+
 export function DashboardIcon(props: IconProps) {
   return (
     <svg {...sharedProps} {...props}>
