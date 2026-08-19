@@ -533,6 +533,38 @@ export function DeviceManagement() {
     };
   }, [activeJobId, activeJobTerminal]);
 
+  useEffect(() => {
+    if (!activeJobId || activeJobTerminal) return;
+
+    let cancelled = false;
+
+    async function syncJobStatus() {
+      try {
+        const response = await fetch(`/api/mdm/action-jobs/${encodeURIComponent(activeJobId)}`, {
+          cache: "no-store",
+        });
+        const data = (await response.json()) as ActionJobResponse;
+        const job = parseMdmDeviceActionJob(data.job);
+        if (!response.ok || data.status !== "success" || !job || cancelled) return;
+
+        setActiveJob(job);
+        if (isTerminalMdmDeviceActionJob(job)) {
+          window.localStorage.removeItem(ACTIVE_ACTION_JOB_KEY);
+          void loadJobHistory();
+        }
+      } catch {
+        // SSE sigue siendo el canal principal; el siguiente ciclo vuelve a consultar el estado durable.
+      }
+    }
+
+    void syncJobStatus();
+    const interval = window.setInterval(() => void syncJobStatus(), 5_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [activeJobId, activeJobTerminal]);
+
   function addLog(messageText: string, tone: LogEntry["tone"] = "info") {
     setLogs((current) => [
       ...current,
