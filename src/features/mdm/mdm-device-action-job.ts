@@ -1,6 +1,7 @@
 export type MdmDeviceActionJobStatus =
   | "QUEUED"
   | "RUNNING"
+  | "CANCELLED"
   | "SUCCEEDED"
   | "PARTIAL_SUCCESS"
   | "FAILED";
@@ -17,6 +18,7 @@ export type MdmDeviceActionJob = {
   pending: number;
   succeeded: number;
   failed: number;
+  cancelled: number;
   lastError: string;
 };
 
@@ -33,6 +35,7 @@ export type MdmDeviceActionJobDetail = MdmDeviceActionJob & {
 const statuses = new Set<MdmDeviceActionJobStatus>([
   "QUEUED",
   "RUNNING",
+  "CANCELLED",
   "SUCCEEDED",
   "PARTIAL_SUCCESS",
   "FAILED",
@@ -64,6 +67,7 @@ export function parseMdmDeviceActionJob(value: unknown): MdmDeviceActionJob | nu
     !isNonNegativeInteger(job.pending) ||
     !isNonNegativeInteger(job.succeeded) ||
     !isNonNegativeInteger(job.failed) ||
+    !isNonNegativeInteger(job.cancelled) ||
     (job.last_error !== undefined && typeof job.last_error !== "string")
   ) {
     return null;
@@ -81,6 +85,7 @@ export function parseMdmDeviceActionJob(value: unknown): MdmDeviceActionJob | nu
     pending: job.pending,
     succeeded: job.succeeded,
     failed: job.failed,
+    cancelled: job.cancelled,
     lastError: typeof job.last_error === "string" ? job.last_error : "",
   };
 }
@@ -127,7 +132,7 @@ export function parseMdmDeviceActionJobDetail(
 }
 
 export function isTerminalMdmDeviceActionJob(job: MdmDeviceActionJob) {
-  return ["SUCCEEDED", "PARTIAL_SUCCESS", "FAILED"].includes(job.status);
+  return ["SUCCEEDED", "PARTIAL_SUCCESS", "FAILED", "CANCELLED"].includes(job.status);
 }
 
 export function mdmDeviceActionJobLabel(job: MdmDeviceActionJob) {
@@ -135,6 +140,7 @@ export function mdmDeviceActionJobLabel(job: MdmDeviceActionJob) {
   if (job.status === "RUNNING") {
     return job.action === "lock" ? "Bloqueando dispositivos" : "Desbloqueando dispositivos";
   }
+  if (job.status === "CANCELLED") return "Cancelado";
   if (job.status === "SUCCEEDED") return "Completado";
   if (job.status === "PARTIAL_SUCCESS") return "Completado con errores";
   return "Fallido";
@@ -147,6 +153,7 @@ export function mdmDeviceActionJobItemLabel(status: string) {
     SUCCEEDED: "Completado",
     NOT_FOUND: "No encontrado",
     FAILED: "Fallido",
+    CANCELLED: "Cancelado",
   };
 
   return labels[status] ?? status;

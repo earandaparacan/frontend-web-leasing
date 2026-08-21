@@ -23,6 +23,7 @@ import {
   type MessageJobDetail,
 } from "./mdm-message-job";
 import styles from "./execution-history.module.css";
+import cancellationStyles from "./execution-history-cancellation.module.css";
 
 type Kind = "actions" | "messages";
 type ApiResponse = { status?: string; jobs?: unknown; job?: unknown; message?: string; error?: string };
@@ -112,7 +113,9 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
   const [loading, setLoading] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState("");
   const [rerunning, setRerunning] = useState("");
+  const [cancelling, setCancelling] = useState("");
   const [jobToRerun, setJobToRerun] = useState<MdmDeviceActionJob | MessageJob | null>(null);
+  const [jobToCancel, setJobToCancel] = useState<MdmDeviceActionJob | null>(null);
   const [notice, setNotice] = useState("");
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
@@ -184,6 +187,19 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
     }
   }
 
+  async function cancel(jobId: string) {
+    setCancelling(jobId);
+    try {
+      const response = await fetch(`${baseUrl}/${encodeURIComponent(jobId)}/cancel`, { method: "POST" });
+      const data = (await response.json()) as ApiResponse;
+      if (!response.ok || data.status !== "success") throw new Error(errorMessage(data));
+      setNotice("La ejecución fue cancelada.");
+      await loadJobs();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "No se pudo cancelar la ejecución.");
+    } finally { setCancelling(""); }
+  }
+
   const title = isAction ? "Historial de bloqueo y desbloqueo" : "Historial de mensajería";
   const terminal = (job: MdmDeviceActionJob | MessageJob) =>
     isAction ? isTerminalMdmDeviceActionJob(job as MdmDeviceActionJob) : isTerminalMessageJob(job as MessageJob);
@@ -195,6 +211,8 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
   const action = (job: MdmDeviceActionJob | MessageJob) => isAction
     ? (job as MdmDeviceActionJob).action === "lock" ? "Bloquear" : "Desbloquear"
     : "Mensaje";
+  const canCancel = (job: MdmDeviceActionJob | MessageJob): job is MdmDeviceActionJob =>
+    isAction && (job.status === "QUEUED" || job.status === "RUNNING");
   const visibleJobs = useMemo(() => {
     const term = search.trim().toLowerCase();
     const periodMs = period === "all" ? null : Number(period) * 24 * 60 * 60 * 1000;
@@ -257,12 +275,13 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
       </header>
       {notice ? <p className={styles.notice} role="status">{notice}</p> : null}
       {detail ? (
-        <section className={styles.detail}>
+        <section className={`${styles.detail} ${cancellationStyles.detail}`}>
           <button className={styles.textButton} type="button" onClick={() => { setDetail(null); setSelectedJobId(""); }}>← Todas las ejecuciones</button>
           <div className={styles.detailHeader}>
             <div><div className={styles.detailTitle}><strong>{action(detail)}</strong><span className={`${styles.status} ${styles[`status--${status(detail)}`]}`}>◉ {label(detail).replace(`${action(detail)} · `, "")}</span></div><span>{formatDate(detail.createdAt)} · {detail.branchName || "Sin sucursal"}</span></div>
             <div className={styles.actions}>
               <Link href={`${editUrl}?editarEjecucion=${encodeURIComponent(detail.id)}`}>Editar y reejecutar</Link>
+              {canCancel(detail) ? <button type="button" onClick={() => setJobToCancel(detail)} disabled={cancelling === detail.id}>{cancelling === detail.id ? "Cancelando…" : "Cancelar"}</button> : null}
               {terminal(detail) ? <button type="button" onClick={() => setJobToRerun(detail)} disabled={rerunning === detail.id}>{rerunning === detail.id ? "Reejecutando…" : "Reejecutar"}</button> : null}
               <button className={styles.downloadButton} type="button" onClick={() => downloadSummary(detail, isAction)}>Descargar Excel</button>
               <div className={styles.menu}><button className={styles.moreButton} type="button" aria-label="Más opciones" aria-expanded={menuJobId === detail.id} onClick={() => setMenuJobId(menuJobId === detail.id ? "" : detail.id)}>⋮</button>{menuJobId === detail.id ? <div className={styles.menuPanel}><Link href={`${editUrl}?editarEjecucion=${encodeURIComponent(detail.id)}`}>Editar y reejecutar</Link></div> : null}</div>
@@ -270,7 +289,7 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
           </div>
           {isAction && (detail as MdmDeviceActionJobDetail).message ? <p className={styles.message}><span aria-hidden="true">i</span>{(detail as MdmDeviceActionJobDetail).message}</p> : null}
           {!isAction ? <p className={styles.message}><span aria-hidden="true">i</span>{(detail as MessageJobDetail).message}</p> : null}
-          <dl className={styles.stats}><div><dt>Equipos</dt><dd>{detail.total}</dd></div><div><dt>{isAction ? "Completados" : "Aceptados"}</dt><dd>{accepted(detail)}</dd></div><div><dt>Fallidos</dt><dd>{detail.failed}</dd></div></dl>
+          <dl className={styles.stats}><div><dt>Equipos</dt><dd>{detail.total}</dd></div><div><dt>{isAction ? "Completados" : "Aceptados"}</dt><dd>{accepted(detail)}</dd></div><div><dt>Fallidos</dt><dd>{detail.failed}</dd></div>{isAction ? <div><dt>Cancelados</dt><dd>{(detail as MdmDeviceActionJobDetail).cancelled}</dd></div> : null}</dl>
           <section className={styles.results}><h2>Resultado por equipo</h2><div className={styles.items}>{detail.items.map((item) => <article key={item.deviceId}><span className={styles.deviceIcon} aria-hidden="true">▣</span><div><strong>{item.deviceId}</strong><span>Intento{item.attempts === 1 ? "" : "s"} {item.attempts}</span>{item.lastError ? <small>{item.lastError}</small> : null}</div><span className={`${styles.status} ${styles[`status--${item.status}`]}`}>{isAction ? mdmDeviceActionJobItemLabel(item.status) : messageJobItemStatusLabel(item.status)}</span></article>)}</div></section>
         </section>
       ) : selectedJobId ? (
@@ -292,7 +311,7 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
               <table><thead><tr><th>Acción</th><th>Estado</th><th>Fecha</th><th>Sucursal</th><th>Resultado</th><th>Acciones</th></tr></thead><tbody>
                 {pagedJobs.map((job) => <tr key={job.id} onClick={() => void openDetail(job.id)} className={styles.row}>
                   <td><strong>{action(job)}</strong></td><td><span className={`${styles.status} ${styles[`status--${status(job)}`]}`}>◉ {label(job).replace(`${action(job)} · `, "")}</span></td><td>{formatDate(job.createdAt)}</td><td>{job.branchName || "Sin sucursal"}</td><td>{job.total} equipo{job.total === 1 ? "" : "s"} · {accepted(job)} ok · {job.failed} fallidos</td>
-                  <td className={styles.rowActions}><button type="button" onClick={(event) => { event.stopPropagation(); setJobToRerun(job); }} disabled={!terminal(job) || rerunning === job.id}>{rerunning === job.id ? "Reejecutando…" : "Reejecutar"}</button><div className={styles.menu}><button type="button" aria-label="Más opciones" aria-expanded={menuJobId === job.id} onClick={(event) => { event.stopPropagation(); setMenuJobId(menuJobId === job.id ? "" : job.id); }}>⋮</button>{menuJobId === job.id ? <div className={styles.menuPanel}><button type="button" onClick={() => { setMenuJobId(""); void openDetail(job.id); }}>Ver detalle</button><Link href={`${editUrl}?editarEjecucion=${encodeURIComponent(job.id)}`}>Editar y reejecutar</Link></div> : null}</div></td>
+                  <td className={styles.rowActions}>{canCancel(job) ? <button type="button" onClick={(event) => { event.stopPropagation(); setJobToCancel(job); }} disabled={cancelling === job.id}>{cancelling === job.id ? "Cancelando…" : "Cancelar"}</button> : <button type="button" onClick={(event) => { event.stopPropagation(); setJobToRerun(job); }} disabled={!terminal(job) || rerunning === job.id}>{rerunning === job.id ? "Reejecutando…" : "Reejecutar"}</button>}<div className={styles.menu}><button type="button" aria-label="Más opciones" aria-expanded={menuJobId === job.id} onClick={(event) => { event.stopPropagation(); setMenuJobId(menuJobId === job.id ? "" : job.id); }}>⋮</button>{menuJobId === job.id ? <div className={styles.menuPanel}><button type="button" onClick={() => { setMenuJobId(""); void openDetail(job.id); }}>Ver detalle</button><Link href={`${editUrl}?editarEjecucion=${encodeURIComponent(job.id)}`}>Editar y reejecutar</Link></div> : null}</div></td>
                 </tr>)}
               </tbody></table>
               <footer className={styles.pagination}><span>Mostrando {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, visibleJobs.length)} de {visibleJobs.length}</span><div><button type="button" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={currentPage === 1}>‹</button>{Array.from({ length: totalPages }, (_, index) => index + 1).map((value) => <button className={value === currentPage ? styles.currentPage : undefined} type="button" onClick={() => setPage(value)} key={value}>{value}</button>)}<button type="button" onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={currentPage === totalPages}>›</button></div></footer>
@@ -311,6 +330,19 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
           const jobId = jobToRerun.id;
           setJobToRerun(null);
           void rerun(jobId);
+        }}
+      />
+      <ConfirmationDialog
+        isOpen={jobToCancel !== null}
+        title="¿Cancelar esta ejecución?"
+        description="Se detendrán los equipos que todavía no fueron enviados. Los equipos ya procesados no se revertirán."
+        confirmLabel="Cancelar ejecución"
+        onCancel={() => setJobToCancel(null)}
+        onConfirm={() => {
+          if (!jobToCancel) return;
+          const jobId = jobToCancel.id;
+          setJobToCancel(null);
+          void cancel(jobId);
         }}
       />
       {isExportOpen ? (
