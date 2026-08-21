@@ -5,13 +5,14 @@ import {
   ChartIcon,
   CheckIcon,
   ClockIcon,
+  CloseIcon,
   DashboardIcon,
   DeviceIcon,
   FileExcelIcon,
   LockIcon,
   ReceiptIcon,
   RefreshIcon,
-  ShieldIcon,
+  SearchIcon,
   UsersIcon,
 } from "@/components/icons";
 import { exportMonitorToExcel } from "./monitor-excel-export";
@@ -87,6 +88,11 @@ export function MonitorOdoo({ initialData }: MonitorOdooProps) {
     setCurrentPage(1);
   }
 
+  function handleClearSearch() {
+    setSearchQuery("");
+    setCurrentPage(1);
+  }
+
   const filterNames: Record<typeof currentFilter, string> = {
     all: "Cartera_Completa",
     bloqueado: "Bloqueados_Morosidad",
@@ -104,20 +110,23 @@ export function MonitorOdoo({ initialData }: MonitorOdooProps) {
   }
 
   return (
-    <div className={`${styles.page} workspace-page`}>
-      {/* 1. HERO / WELCOME SECTION */}
+    <div className={styles.page}>
+      {/* 1. HERO / HEADER */}
       <div className={styles.hero}>
         <div className={styles.heroMain}>
           <div className={styles.kicker}>AUDITORÍA &amp; CONTROL EN TIEMPO REAL</div>
           <h1>Monitor de Elegibilidad &amp; Bloqueos MDM</h1>
           <p>
-            Teklease Cloud • Conexión XML-RPC en vivo con Odoo 18 ({data.odoo_db || "mergal-master-24463314"})
+            <span>Teklease Cloud • Conexión XML-RPC en vivo</span>
+            <span className={styles.dbBadge}>
+              Odoo 18: {data.odoo_db || "mergal-master-24463314"}
+            </span>
           </p>
         </div>
 
         <div className={styles.heroActions}>
           <div className={styles.securityNote}>
-            <ShieldIcon />
+            <span className={styles.securityDot} />
             <span>
               <strong>Sincronizado: {data.generated_at || "En vivo"}</strong>
               Conexión segura activa
@@ -130,7 +139,7 @@ export function MonitorOdoo({ initialData }: MonitorOdooProps) {
             onClick={handleExportAll}
             title="Descargar reporte completo en formato Excel (.xls)"
           >
-            <FileExcelIcon width={14} height={14} /> Exportar Excel
+            <FileExcelIcon width={15} height={15} /> Exportar Excel
           </button>
 
           <button
@@ -139,19 +148,19 @@ export function MonitorOdoo({ initialData }: MonitorOdooProps) {
             onClick={handleRefresh}
             disabled={isRefreshing}
           >
-            <RefreshIcon width={13} height={13} className={isRefreshing ? "animate-spin" : ""} />
+            <RefreshIcon width={14} height={14} className={isRefreshing ? "animate-spin" : ""} />
             {isRefreshing ? "Actualizando..." : "Actualizar en Vivo"}
           </button>
         </div>
       </div>
 
       {data.error && (
-        <div style={{ padding: "12px 16px", borderRadius: "12px", background: "#fdf0ee", border: "1px solid #f6cfc7", color: "#c4402a", fontSize: "12px", marginBottom: "20px" }}>
+        <div style={{ padding: "12px 16px", borderRadius: "12px", background: "#fef2f2", border: "1px solid #fecaca", color: "#b91c1c", fontSize: "12px", marginBottom: "24px" }}>
           <strong>Aviso:</strong> {data.error}
         </div>
       )}
 
-      {/* 2. KPI METRIC GRID (4 ITEMS RESPONSIVE 4 -> 2 -> 1) */}
+      {/* 2. KPI METRIC GRID (TOP 4 TARJETAS) */}
       <div className={styles.metricGrid}>
         {/* METRIC 1: TOTAL CARTERA */}
         <div className={`${styles.metricCard} ${styles.metricCardOrange}`}>
@@ -164,7 +173,7 @@ export function MonitorOdoo({ initialData }: MonitorOdooProps) {
           <div className={styles.metricValue}>{formatNumber(data.total_orders)}</div>
           <div className={styles.metricFooter}>
             <span>{formatNumber(data.total_imeis)} IMEIs con serie</span>
-            <span style={{ color: "var(--brand-orange, #ef5c2d)", fontWeight: 700 }}>Plan ID: 1</span>
+            <span style={{ color: "var(--brand-orange, #ef5c2d)", fontWeight: 750 }}>Plan ID: 1</span>
           </div>
         </div>
 
@@ -214,7 +223,7 @@ export function MonitorOdoo({ initialData }: MonitorOdooProps) {
         </div>
       </div>
 
-      {/* 3. ANALYTICS ROW: 3 COLUMNS -> 2 -> 1 */}
+      {/* 3. ANALYTICS ROW (3 COLUMNAS) */}
       <div className={styles.analyticsGrid}>
         {/* COLUMNA 1: ACCIONES PROYECTADAS */}
         <div className={styles.analyticsCard}>
@@ -229,7 +238,7 @@ export function MonitorOdoo({ initialData }: MonitorOdooProps) {
                 <span className={styles.actionTagRose}>
                   Bloqueos Proyectados
                 </span>
-                <span className={styles.actionPercent} style={{ color: "#c4402a" }}>
+                <span className={styles.actionPercent} style={{ color: "#be123c" }}>
                   {data.percent_bloqueados}%
                 </span>
               </div>
@@ -242,7 +251,7 @@ export function MonitorOdoo({ initialData }: MonitorOdooProps) {
                 <span className={styles.actionTagGreen}>
                   Clientes Habilitados
                 </span>
-                <span className={styles.actionPercent} style={{ color: "#327e36" }}>
+                <span className={styles.actionPercent} style={{ color: "#15803d" }}>
                   {data.percent_habilitados}%
                 </span>
               </div>
@@ -260,8 +269,8 @@ export function MonitorOdoo({ initialData }: MonitorOdooProps) {
             </h3>
           </div>
           <div className={styles.donutWrap}>
-            <svg width="130" height="130" viewBox="0 0 100 100">
-              <circle cx="50" cy="50" r="38" fill="none" stroke="rgba(0, 0, 0, 0.06)" strokeWidth="15" />
+            <svg width="140" height="140" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="38" fill="none" stroke="#f3f4f6" strokeWidth="14" />
               {/* Al dia */}
               <circle
                 cx="50"
@@ -269,7 +278,7 @@ export function MonitorOdoo({ initialData }: MonitorOdooProps) {
                 r="38"
                 fill="none"
                 stroke="#10b981"
-                strokeWidth="15"
+                strokeWidth="14"
                 strokeDasharray={`${(data.count_al_dia / (data.total_orders || 1)) * 238.76} 238.76`}
                 strokeDashoffset="0"
                 transform="rotate(-90 50 50)"
@@ -281,12 +290,16 @@ export function MonitorOdoo({ initialData }: MonitorOdooProps) {
                 r="38"
                 fill="none"
                 stroke="#ef5c2d"
-                strokeWidth="15"
+                strokeWidth="14"
                 strokeDasharray={`${(data.count_bloqueados / (data.total_orders || 1)) * 238.76} 238.76`}
                 strokeDashoffset={`-${(data.count_al_dia / (data.total_orders || 1)) * 238.76}`}
                 transform="rotate(-90 50 50)"
               />
             </svg>
+            <div className={styles.donutCenter}>
+              <span className={styles.donutCenterValue}>{formatNumber(data.total_orders)}</span>
+              <span className={styles.donutCenterLabel}>Total</span>
+            </div>
           </div>
           <div className={styles.donutLegend}>
             <div><span className={styles.legendDot} style={{ background: "#10b981" }} />Al Día: <strong>{data.count_al_dia}</strong></div>
@@ -310,7 +323,7 @@ export function MonitorOdoo({ initialData }: MonitorOdooProps) {
                   <div className={styles.branchMeta}>
                     <span>{b.branch_name}</span>
                     <span style={{ fontFamily: "monospace", fontSize: "11px" }}>
-                      {b.count} <span style={{ color: "#999999", fontWeight: "normal" }}>({b.percent}%)</span>
+                      <strong>{b.count}</strong> <span style={{ color: "#9ca3af", fontWeight: "normal" }}>({b.percent}%)</span>
                     </span>
                   </div>
                   <div className={styles.branchTrack}>
@@ -319,7 +332,7 @@ export function MonitorOdoo({ initialData }: MonitorOdooProps) {
                 </div>
               ))
             ) : (
-              <p style={{ color: "#999999", fontSize: "11px", textAlign: "center", margin: "auto" }}>
+              <p style={{ color: "#9ca3af", fontSize: "11px", textAlign: "center", margin: "auto" }}>
                 No hay datos de sucursales.
               </p>
             )}
@@ -327,7 +340,7 @@ export function MonitorOdoo({ initialData }: MonitorOdooProps) {
         </div>
       </div>
 
-      {/* 4. EXPLORADOR DE TABLA & LISTA MÓVIL RESPONSIVE */}
+      {/* 4. EXPLORADOR DE TABLA & LISTA */}
       <div className={styles.tableSection}>
         <div className={styles.tableToolbar}>
           <div className={styles.filterGroup}>
@@ -373,26 +386,49 @@ export function MonitorOdoo({ initialData }: MonitorOdooProps) {
               type="button"
               className={styles.buttonSecondary}
               onClick={handleExportFiltered}
-              style={{ padding: "7px 12px", fontSize: "10px" }}
+              style={{ padding: "7px 12px", fontSize: "11px" }}
               title="Descargar registros de la pestaña activa en Excel"
             >
-              <FileExcelIcon width={12} height={12} /> Descargar Pestaña
+              <FileExcelIcon width={13} height={13} /> Descargar Pestaña
             </button>
 
             <div className={styles.searchField}>
+              <span className={styles.searchIcon}>
+                <SearchIcon width={14} height={14} />
+              </span>
               <input
                 type="text"
                 placeholder="Buscar IMEI, cliente u orden..."
                 value={searchQuery}
                 onChange={handleSearchChange}
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  className={styles.clearSearchBtn}
+                  onClick={handleClearSearch}
+                  title="Limpiar búsqueda"
+                >
+                  <CloseIcon width={12} height={12} />
+                </button>
+              )}
             </div>
           </div>
         </div>
 
-        {/* 4A. VISTA TABLA (DESKTOP & TABLET CON SCROLL HORIZONTAL CONTENIDO) */}
+        {/* 4A. VISTA TABLA DESKTOP CON COLGROUP DEFINIDO */}
         <div className={styles.tableWrap}>
           <table>
+            <colgroup>
+              <col style={{ width: "95px" }} />
+              <col style={{ width: "230px" }} />
+              <col style={{ width: "160px" }} />
+              <col style={{ width: "220px" }} />
+              <col style={{ width: "175px" }} />
+              <col style={{ width: "125px" }} />
+              <col style={{ width: "175px" }} />
+              <col style={{ width: "135px" }} />
+            </colgroup>
             <thead>
               <tr>
                 <th>Orden</th>
@@ -413,13 +449,19 @@ export function MonitorOdoo({ initialData }: MonitorOdooProps) {
                       <span className={styles.orderNumber}>{item.order_name}</span>
                     </td>
                     <td>
-                      <strong style={{ color: "#151515" }}>{item.partner_name}</strong>
+                      <span className={styles.partnerName} title={item.partner_name}>
+                        {item.partner_name}
+                      </span>
                     </td>
                     <td>
-                      <span className={styles.imeiCode}>{item.imei || <span style={{ color: "#999999" }}>Sin IMEI</span>}</span>
+                      <span className={styles.imeiCode}>
+                        {item.imei || <span style={{ color: "#9ca3af" }}>Sin IMEI</span>}
+                      </span>
                     </td>
                     <td>
-                      <span className={styles.cellSubtitle}>{item.device_product || "Sin Modelo"}</span>
+                      <span className={styles.deviceModel} title={item.device_product}>
+                        {item.device_product || "Sin Modelo"}
+                      </span>
                     </td>
                     <td>
                       <div className={styles.cellStack}>
@@ -436,26 +478,26 @@ export function MonitorOdoo({ initialData }: MonitorOdooProps) {
                       {item.has_promise ? (
                         !item.promesa_vencida ? (
                           <span className={`${styles.statusBadge} ${styles.statusBlue}`}>
-                            <ClockIcon width={10} height={10} />
+                            <ClockIcon width={11} height={11} />
                             <span style={{ fontFamily: "monospace" }}>{item.fecha_promesa_pago}</span>
                             <span style={{ background: "#0284c7", color: "#ffffff", padding: "1px 4px", borderRadius: "3px", fontSize: "8px", fontWeight: "bold" }}>
                               VIGENTE
                             </span>
                           </span>
                         ) : (
-                          <span className={styles.statusBadge} style={{ background: "#f5f5f5", color: "#777777", border: "1px solid #e0e0e0" }}>
+                          <span className={styles.statusBadge} style={{ background: "#f3f4f6", color: "#4b5563", border: "1px solid #e5e7eb" }}>
                             <span style={{ fontFamily: "monospace" }}>{item.fecha_promesa_pago}</span>
-                            <span style={{ background: "#888888", color: "#ffffff", padding: "1px 4px", borderRadius: "3px", fontSize: "8px" }}>
+                            <span style={{ background: "#6b7280", color: "#ffffff", padding: "1px 4px", borderRadius: "3px", fontSize: "8px" }}>
                               VENCIDA
                             </span>
                           </span>
                         )
                       ) : item.has_recent_payment ? (
                         <span className={`${styles.statusBadge} ${styles.statusAmber}`}>
-                          <ReceiptIcon width={10} height={10} /> Pago &le; 15d
+                          <ReceiptIcon width={11} height={11} /> Pago &le; 15d
                         </span>
                       ) : (
-                        <span style={{ color: "#999999" }}>—</span>
+                        <span style={{ color: "#9ca3af" }}>—</span>
                       )}
                     </td>
                     <td style={{ textAlign: "center" }}>
@@ -468,7 +510,7 @@ export function MonitorOdoo({ initialData }: MonitorOdooProps) {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: "center", padding: "36px", color: "#999999" }}>
+                  <td colSpan={8} style={{ textAlign: "center", padding: "40px 20px", color: "#6b7280" }}>
                     No se encontraron suscripciones con los filtros actuales.
                   </td>
                 </tr>
@@ -477,7 +519,7 @@ export function MonitorOdoo({ initialData }: MonitorOdooProps) {
           </table>
         </div>
 
-        {/* 4B. VISTA LISTA / CARDS (MÓVIL BREAKPOINTS CHICOS <= 768PX) */}
+        {/* 4B. VISTA MÓVIL / RESPONSIVE LIST */}
         <div className={styles.mobileCardList}>
           {pageItems.length > 0 ? (
             pageItems.map((item) => (
@@ -507,7 +549,7 @@ export function MonitorOdoo({ initialData }: MonitorOdooProps) {
               </div>
             ))
           ) : (
-            <div style={{ textAlign: "center", padding: "28px", color: "#999999", fontSize: "12px" }}>
+            <div style={{ textAlign: "center", padding: "28px", color: "#6b7280", fontSize: "12px" }}>
               No se encontraron registros.
             </div>
           )}
