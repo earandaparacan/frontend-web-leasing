@@ -78,7 +78,7 @@ function escapeSpreadsheetValue(value: string) {
 }
 
 function downloadHistory(details: Array<MdmDeviceActionJobDetail | MessageJobDetail>, isAction: boolean) {
-  const headers = ["IMEI", "Acción", "Estado", "Exitoso", "Fecha", "Sucursal", ...(!isAction ? ["Etapa"] : []), "Intentos", "Error", "Ejecución"];
+  const headers = ["IMEI", "Acción", "Estado", "Exitoso", "Fecha", "Sucursal", ...(!isAction ? ["Etapa", "Mensaje"] : []), "Intentos", "Error", "Ejecución"];
   const rows = [
     ...details.flatMap((job) => job.items.map((item) => [
       item.deviceId,
@@ -88,6 +88,7 @@ function downloadHistory(details: Array<MdmDeviceActionJobDetail | MessageJobDet
       formatDate(job.createdAt),
       job.branchName || "Sin sucursal",
       ...(!isAction ? [collectionPhaseLabel(job as MessageJobDetail)] : []),
+      ...(!isAction ? [(job as MessageJobDetail).message] : []),
       String(item.attempts),
       item.lastError,
       job.id,
