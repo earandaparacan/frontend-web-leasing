@@ -230,7 +230,9 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
       const matchesStatus = statusFilter === "all"
         || (statusFilter === "attention" && ["QUEUED", "RUNNING", "PARTIAL_SUCCESS", "FAILED"].includes(status(job)))
         || status(job) === statusFilter;
-      const matchesPeriod = periodMs === null || Date.now() - new Date(job.createdAt).getTime() <= periodMs;
+      const matchesPeriod = period === "today"
+        ? formatDateForInput(new Date(job.createdAt)) === formatDateForInput(new Date())
+        : periodMs === null || Date.now() - new Date(job.createdAt).getTime() <= periodMs;
       return matchesSearch && matchesAction && matchesStatus && matchesPeriod;
     });
   }, [actionFilter, isAction, jobs, period, search, statusFilter]);
@@ -262,7 +264,9 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
         const matchesStatus = statusFilter === "all"
           || (statusFilter === "attention" && ["QUEUED", "RUNNING", "PARTIAL_SUCCESS", "FAILED"].includes(status(job)))
           || status(job) === statusFilter;
-        const matchesPeriod = periodMs === null || currentTime - new Date(job.createdAt).getTime() <= periodMs;
+        const matchesPeriod = period === "today"
+          ? formatDateForInput(new Date(job.createdAt)) === formatDateForInput(new Date())
+          : periodMs === null || currentTime - new Date(job.createdAt).getTime() <= periodMs;
         const jobDate = formatDateForInput(new Date(job.createdAt));
         const matchesExportPeriod = exportPeriodType === "date"
           ? jobDate === exportDate
@@ -336,7 +340,7 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
             <label className={styles.search}><span aria-hidden="true">⌕</span><input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Buscar ejecución" /></label>
             {isAction ? <select value={actionFilter} onChange={(event) => { setActionFilter(event.target.value); setPage(1); }} aria-label="Filtrar por acción"><option value="all">Todas las acciones</option><option value="bloquear">Bloquear</option><option value="desbloquear">Desbloquear</option></select> : null}
             <select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }} aria-label="Filtrar por estado"><option value="all">Todos los estados</option><option value="attention">Requieren seguimiento</option><option value="SUCCEEDED">Completado</option><option value="PARTIAL_SUCCESS">Completado con errores</option><option value="FAILED">Fallido</option><option value="QUEUED">En cola</option><option value="RUNNING">En proceso</option></select>
-            <select value={period} onChange={(event) => { setPeriod(event.target.value); setPage(1); }} aria-label="Filtrar por fecha"><option value="7">Últimos 7 días</option><option value="30">Últimos 30 días</option><option value="all">Todo el historial</option></select>
+            <select value={period} onChange={(event) => { setPeriod(event.target.value); setPage(1); }} aria-label="Filtrar por fecha"><option value="today">Hoy</option><option value="7">Últimos 7 días</option><option value="30">Últimos 30 días</option><option value="all">Todo el historial</option></select>
             <button className={styles.exportButton} type="button" onClick={() => setIsExportOpen(true)}><DownloadIcon />Exportar a Excel</button>
           </section>
           {loading ? <p className={styles.empty}>Cargando ejecuciones…</p> : jobs.length === 0 ? <p className={styles.empty}>Todavía no hay ejecuciones registradas.</p> : visibleJobs.length === 0 ? <p className={styles.empty}>No hay ejecuciones que coincidan con los filtros.</p> : (
