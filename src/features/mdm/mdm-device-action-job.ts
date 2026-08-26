@@ -10,6 +10,7 @@ export type MdmDeviceActionJob = {
   id: string;
   branchId: number | null;
   branchName: string;
+  collectionPhase: number | null;
   createdAt: string;
   rerunOf: string | null;
   action: "lock" | "unlock";
@@ -49,14 +50,20 @@ function isBranchId(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value > 0;
 }
 
+function isCollectionPhase(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 1 && value <= 4;
+}
+
 export function parseMdmDeviceActionJob(value: unknown): MdmDeviceActionJob | null {
   if (typeof value !== "object" || value === null) return null;
   const job = value as Record<string, unknown>;
   const branchId = job.branch_id;
+  const collectionPhase = job.collection_phase;
   if (
     typeof job.id !== "string" ||
     typeof job.branch_name !== "string" ||
     (branchId !== undefined && branchId !== null && !isBranchId(branchId)) ||
+    (collectionPhase !== undefined && collectionPhase !== null && !isCollectionPhase(collectionPhase)) ||
     typeof job.created_at !== "string" ||
     Number.isNaN(Date.parse(job.created_at)) ||
     (job.rerun_of !== null && typeof job.rerun_of !== "string") ||
@@ -77,6 +84,7 @@ export function parseMdmDeviceActionJob(value: unknown): MdmDeviceActionJob | nu
     id: job.id,
     branchId: isBranchId(branchId) ? branchId : null,
     branchName: job.branch_name,
+    collectionPhase: isCollectionPhase(collectionPhase) ? collectionPhase : null,
     createdAt: job.created_at,
     rerunOf: typeof job.rerun_of === "string" ? job.rerun_of : null,
     action: job.action,

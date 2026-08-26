@@ -43,7 +43,8 @@ function downloadSummary(detail: MdmDeviceActionJobDetail | MessageJobDetail, is
   const rows = [
     ["Ejecución", detail.id], ["Fecha", formatDate(detail.createdAt)],
     ["Sucursal", detail.branchName || "Sin sucursal"],
-    ...(!isAction ? [["Etapa", collectionPhaseLabel(detail as MessageJobDetail)]] : []),
+    ["Etapa", collectionPhaseLabel(detail)],
+    ["Mensaje", detail.message],
     ["Equipos", String(detail.total)],
     [isAction ? "Completados" : "Aceptados", String(completed)], ["Fallidos", String(detail.failed)], [],
     ["Equipo", "Estado", "Intentos", "Último error"],
@@ -58,7 +59,7 @@ function downloadSummary(detail: MdmDeviceActionJobDetail | MessageJobDetail, is
   URL.revokeObjectURL(url);
 }
 
-function collectionPhaseLabel(job: MessageJob) {
+function collectionPhaseLabel(job: MdmDeviceActionJob | MessageJob) {
   return job.collectionPhase === null ? "Sin etapa" : `Etapa ${job.collectionPhase}`;
 }
 
@@ -78,7 +79,7 @@ function escapeSpreadsheetValue(value: string) {
 }
 
 function downloadHistory(details: Array<MdmDeviceActionJobDetail | MessageJobDetail>, isAction: boolean) {
-  const headers = ["IMEI", "Acción", "Estado", "Exitoso", "Fecha", "Sucursal", ...(!isAction ? ["Etapa", "Mensaje"] : []), "Intentos", "Error", "Ejecución"];
+  const headers = ["IMEI", "Acción", "Estado", "Exitoso", "Fecha", "Sucursal", "Etapa", "Mensaje", "Intentos", "Error", "Ejecución"];
   const rows = [
     ...details.flatMap((job) => job.items.map((item) => [
       item.deviceId,
@@ -87,8 +88,8 @@ function downloadHistory(details: Array<MdmDeviceActionJobDetail | MessageJobDet
       item.status === (isAction ? "SUCCEEDED" : "ACCEPTED") ? "Sí" : "No",
       formatDate(job.createdAt),
       job.branchName || "Sin sucursal",
-      ...(!isAction ? [collectionPhaseLabel(job as MessageJobDetail)] : []),
-      ...(!isAction ? [(job as MessageJobDetail).message] : []),
+      collectionPhaseLabel(job),
+      job.message,
       String(item.attempts),
       item.lastError,
       job.id,
@@ -326,7 +327,7 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
           </div>
           {isAction && (detail as MdmDeviceActionJobDetail).message ? <p className={styles.message}><span aria-hidden="true">i</span>{(detail as MdmDeviceActionJobDetail).message}</p> : null}
           {!isAction ? <p className={styles.message}><span aria-hidden="true">i</span>{(detail as MessageJobDetail).message}</p> : null}
-          <dl className={styles.stats}><div><dt>Equipos</dt><dd>{detail.total}</dd></div>{!isAction ? <div><dt>Etapa</dt><dd>{collectionPhaseLabel(detail as MessageJobDetail)}</dd></div> : null}<div><dt>{isAction ? "Completados" : "Aceptados"}</dt><dd>{accepted(detail)}</dd></div><div><dt>Fallidos</dt><dd>{detail.failed}</dd></div>{isAction ? <div><dt>Cancelados</dt><dd>{(detail as MdmDeviceActionJobDetail).cancelled}</dd></div> : null}</dl>
+          <dl className={styles.stats}><div><dt>Equipos</dt><dd>{detail.total}</dd></div><div><dt>Etapa</dt><dd>{collectionPhaseLabel(detail)}</dd></div><div><dt>{isAction ? "Completados" : "Aceptados"}</dt><dd>{accepted(detail)}</dd></div><div><dt>Fallidos</dt><dd>{detail.failed}</dd></div>{isAction ? <div><dt>Cancelados</dt><dd>{(detail as MdmDeviceActionJobDetail).cancelled}</dd></div> : null}</dl>
           <section className={styles.results}><h2>Resultado por equipo</h2><div className={styles.items}>{detail.items.map((item) => <article key={item.deviceId}><span className={styles.deviceIcon} aria-hidden="true">▣</span><div><strong>{item.deviceId}</strong><span>Intento{item.attempts === 1 ? "" : "s"} {item.attempts}</span>{item.lastError ? <small>{item.lastError}</small> : null}</div><span className={`${styles.status} ${styles[`status--${item.status}`]}`}>{isAction ? mdmDeviceActionJobItemLabel(item.status) : messageJobItemStatusLabel(item.status)}</span></article>)}</div></section>
         </section>
       ) : selectedJobId ? (
@@ -345,9 +346,9 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
           </section>
           {loading ? <p className={styles.empty}>Cargando ejecuciones…</p> : jobs.length === 0 ? <p className={styles.empty}>Todavía no hay ejecuciones registradas.</p> : visibleJobs.length === 0 ? <p className={styles.empty}>No hay ejecuciones que coincidan con los filtros.</p> : (
             <section className={styles.tableWrap} aria-label="Ejecuciones registradas">
-              <table><thead><tr><th>Acción</th><th>Estado</th><th>Fecha</th><th>Sucursal</th>{!isAction ? <th>Etapa</th> : null}<th>Resultado</th><th>Acciones</th></tr></thead><tbody>
+              <table><thead><tr><th>Acción</th><th>Estado</th><th>Fecha</th><th>Sucursal</th><th>Etapa</th><th>Resultado</th><th>Acciones</th></tr></thead><tbody>
                 {pagedJobs.map((job) => <tr key={job.id} onClick={() => void openDetail(job.id)} className={styles.row}>
-                  <td><strong>{action(job)}</strong></td><td><span className={`${styles.status} ${styles[`status--${status(job)}`]}`}>◉ {label(job).replace(`${action(job)} · `, "")}</span></td><td>{formatDate(job.createdAt)}</td><td>{job.branchName || "Sin sucursal"}</td>{!isAction ? <td>{collectionPhaseLabel(job as MessageJob)}</td> : null}<td>{job.total} equipo{job.total === 1 ? "" : "s"} · {accepted(job)} ok · {job.failed} fallidos</td>
+                  <td><strong>{action(job)}</strong></td><td><span className={`${styles.status} ${styles[`status--${status(job)}`]}`}>◉ {label(job).replace(`${action(job)} · `, "")}</span></td><td>{formatDate(job.createdAt)}</td><td>{job.branchName || "Sin sucursal"}</td><td>{collectionPhaseLabel(job)}</td><td>{job.total} equipo{job.total === 1 ? "" : "s"} · {accepted(job)} ok · {job.failed} fallidos</td>
                   <td className={styles.rowActions}>{canCancel(job) ? <button type="button" onClick={(event) => { event.stopPropagation(); setJobToCancel(job); }} disabled={cancelling === job.id}>{cancelling === job.id ? "Cancelando…" : "Cancelar"}</button> : <button type="button" onClick={(event) => { event.stopPropagation(); setJobToRerun(job); }} disabled={!terminal(job) || rerunning === job.id}>{rerunning === job.id ? "Reejecutando…" : "Reejecutar"}</button>}<div className={styles.menu}><button type="button" aria-label="Más opciones" aria-expanded={menuJobId === job.id} onClick={(event) => { event.stopPropagation(); setMenuJobId(menuJobId === job.id ? "" : job.id); }}>⋮</button>{menuJobId === job.id ? <div className={styles.menuPanel}><button type="button" onClick={() => { setMenuJobId(""); void openDetail(job.id); }}>Ver detalle</button><Link href={`${editUrl}?editarEjecucion=${encodeURIComponent(job.id)}`}>Editar y reejecutar</Link></div> : null}</div></td>
                 </tr>)}
               </tbody></table>
