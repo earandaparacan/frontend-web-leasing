@@ -14,6 +14,7 @@ export type MessageJob = {
   id: string;
   branchId: number | null;
   branchName: string;
+  collectionPhase: number | null;
   createdAt: string;
   rerunOf: string | null;
   status: MessageJobStatus;
@@ -51,6 +52,10 @@ function isBranchId(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value > 0;
 }
 
+function isCollectionPhase(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 1 && value <= 4;
+}
+
 function isMessageJobStatus(value: unknown): value is MessageJobStatus {
   return typeof value === "string" && messageJobStatuses.some((status) => status === value);
 }
@@ -60,11 +65,13 @@ export function parseMessageJob(value: unknown): MessageJob | null {
 
   const candidate = isRecord(value.job) ? value.job : value;
   const branchId = candidate.branch_id;
+  const collectionPhase = candidate.collection_phase;
   if (
     typeof candidate.id !== "string" ||
     candidate.id.length === 0 ||
     typeof candidate.branch_name !== "string" ||
     (branchId !== undefined && branchId !== null && !isBranchId(branchId)) ||
+    (collectionPhase !== undefined && collectionPhase !== null && !isCollectionPhase(collectionPhase)) ||
     typeof candidate.created_at !== "string" ||
     Number.isNaN(Date.parse(candidate.created_at)) ||
     (candidate.rerun_of !== null && typeof candidate.rerun_of !== "string") ||
@@ -81,6 +88,7 @@ export function parseMessageJob(value: unknown): MessageJob | null {
     id: candidate.id,
     branchId: isBranchId(branchId) ? branchId : null,
     branchName: candidate.branch_name,
+    collectionPhase: isCollectionPhase(collectionPhase) ? collectionPhase : null,
     createdAt: candidate.created_at,
     rerunOf: typeof candidate.rerun_of === "string" ? candidate.rerun_of : null,
     status: candidate.status,

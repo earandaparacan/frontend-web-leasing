@@ -42,7 +42,9 @@ function downloadSummary(detail: MdmDeviceActionJobDetail | MessageJobDetail, is
     : (detail as MessageJobDetail).accepted;
   const rows = [
     ["Ejecución", detail.id], ["Fecha", formatDate(detail.createdAt)],
-    ["Sucursal", detail.branchName || "Sin sucursal"], ["Equipos", String(detail.total)],
+    ["Sucursal", detail.branchName || "Sin sucursal"],
+    ...(!isAction ? [["Etapa", collectionPhaseLabel(detail as MessageJobDetail)]] : []),
+    ["Equipos", String(detail.total)],
     [isAction ? "Completados" : "Aceptados", String(completed)], ["Fallidos", String(detail.failed)], [],
     ["Equipo", "Estado", "Intentos", "Último error"],
     ...detail.items.map((item) => [item.deviceId, item.status, String(item.attempts), item.lastError]),
@@ -54,6 +56,10 @@ function downloadSummary(detail: MdmDeviceActionJobDetail | MessageJobDetail, is
   link.download = `ejecucion-${detail.id}.xls`;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+function collectionPhaseLabel(job: MessageJob) {
+  return job.collectionPhase === null ? "Sin etapa" : `Etapa ${job.collectionPhase}`;
 }
 
 function formatDateForInput(value: Date) {
@@ -72,7 +78,7 @@ function escapeSpreadsheetValue(value: string) {
 }
 
 function downloadHistory(details: Array<MdmDeviceActionJobDetail | MessageJobDetail>, isAction: boolean) {
-  const headers = ["IMEI", "Acción", "Estado", "Exitoso", "Fecha", "Sucursal", "Intentos", "Error", "Ejecución"];
+  const headers = ["IMEI", "Acción", "Estado", "Exitoso", "Fecha", "Sucursal", ...(!isAction ? ["Etapa"] : []), "Intentos", "Error", "Ejecución"];
   const rows = [
     ...details.flatMap((job) => job.items.map((item) => [
       item.deviceId,
@@ -81,6 +87,7 @@ function downloadHistory(details: Array<MdmDeviceActionJobDetail | MessageJobDet
       item.status === (isAction ? "SUCCEEDED" : "ACCEPTED") ? "Sí" : "No",
       formatDate(job.createdAt),
       job.branchName || "Sin sucursal",
+      ...(!isAction ? [collectionPhaseLabel(job as MessageJobDetail)] : []),
       String(item.attempts),
       item.lastError,
       job.id,
@@ -237,25 +244,50 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
   function closeExportDialog() { setIsExportOpen(false); }
 
   async function handleExport() {
-    const selectedJobs = visibleJobs.filter((job) => {
-      const jobDate = formatDateForInput(new Date(job.createdAt));
-      if (exportPeriodType === "date") return !exportDate || jobDate === exportDate;
-      return (!exportStartDate || jobDate >= exportStartDate) && (!exportEndDate || jobDate <= exportEndDate);
-    });
-    if (selectedJobs.length === 0) {
-      setNotice("No hay ejecuciones para exportar en el período seleccionado.");
-      return;
-    }
-
     setIsExporting(true);
     try {
-      const details = await Promise.all(selectedJobs.map(async (job) => {
-        const response = await fetch(`${baseUrl}/${encodeURIComponent(job.id)}`, { cache: "no-store" });
-        const data = (await response.json()) as ApiResponse;
-        const parsed = isAction ? parseMdmDeviceActionJobDetail(data) : parseMessageJobDetail(data);
-        if (!response.ok || data.status !== "success" || !parsed) throw new Error(errorMessage(data));
-        return parsed;
-      }));
+      const jobsResponse = await fetch(`${baseUrl}?export=all`, { cache: "no-store" });
+      const jobsData = (await jobsResponse.json()) as ApiResponse;
+      if (!jobsResponse.ok || jobsData.status !== "success" || !Array.isArray(jobsData.jobs)) throw new Error(errorMessage(jobsData));
+      const allJobs = isAction
+        ? jobsData.jobs.map(parseMdmDeviceActionJob).filter((job): job is MdmDeviceActionJob => job !== null)
+        : jobsData.jobs.map(parseMessageJob).filter((job): job is MessageJob => job !== null);
+      const currentTime = Date.now();
+      const term = search.trim().toLowerCase();
+      const periodMs = period === "all" ? null : Number(period) * 24 * 60 * 60 * 1000;
+      const selectedJobs = allJobs.filter((job) => {
+        const matchesSearch = !term || [action(job), label(job), job.branchName, job.id].some((value) => value.toLowerCase().includes(term));
+        const matchesAction = actionFilter === "all" || action(job).toLowerCase() === actionFilter;
+        const matchesStatus = statusFilter === "all"
+          || (statusFilter === "attention" && ["QUEUED", "RUNNING", "PARTIAL_SUCCESS", "FAILED"].includes(status(job)))
+          || status(job) === statusFilter;
+        const matchesPeriod = periodMs === null || currentTime - new Date(job.createdAt).getTime() <= periodMs;
+        const jobDate = formatDateForInput(new Date(job.createdAt));
+        const matchesExportPeriod = exportPeriodType === "date"
+          ? jobDate === exportDate
+          : jobDate >= exportStartDate && jobDate <= exportEndDate;
+        return matchesSearch && matchesAction && matchesStatus && matchesPeriod && matchesExportPeriod;
+      });
+      if (selectedJobs.length === 0) {
+        setNotice("No hay ejecuciones para exportar en el período seleccionado.");
+        return;
+      }
+      const detailBatchSize = 10;
+      const detailBatches = Array.from(
+        { length: Math.ceil(selectedJobs.length / detailBatchSize) },
+        (_, index) => selectedJobs.slice(index * detailBatchSize, (index + 1) * detailBatchSize),
+      );
+      const details: Array<MdmDeviceActionJobDetail | MessageJobDetail> = [];
+      for (const batch of detailBatches) {
+        const batchDetails = await Promise.all(batch.map(async (job) => {
+          const response = await fetch(`${baseUrl}/${encodeURIComponent(job.id)}`, { cache: "no-store" });
+          const data = (await response.json()) as ApiResponse;
+          const parsed = isAction ? parseMdmDeviceActionJobDetail(data) : parseMessageJobDetail(data);
+          if (!response.ok || data.status !== "success" || !parsed) throw new Error(errorMessage(data));
+          return parsed;
+        }));
+        details.push(...batchDetails);
+      }
       downloadHistory(details, isAction);
       closeExportDialog();
       setNotice("El archivo Excel con el detalle por IMEI se descargó correctamente.");
@@ -289,7 +321,7 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
           </div>
           {isAction && (detail as MdmDeviceActionJobDetail).message ? <p className={styles.message}><span aria-hidden="true">i</span>{(detail as MdmDeviceActionJobDetail).message}</p> : null}
           {!isAction ? <p className={styles.message}><span aria-hidden="true">i</span>{(detail as MessageJobDetail).message}</p> : null}
-          <dl className={styles.stats}><div><dt>Equipos</dt><dd>{detail.total}</dd></div><div><dt>{isAction ? "Completados" : "Aceptados"}</dt><dd>{accepted(detail)}</dd></div><div><dt>Fallidos</dt><dd>{detail.failed}</dd></div>{isAction ? <div><dt>Cancelados</dt><dd>{(detail as MdmDeviceActionJobDetail).cancelled}</dd></div> : null}</dl>
+          <dl className={styles.stats}><div><dt>Equipos</dt><dd>{detail.total}</dd></div>{!isAction ? <div><dt>Etapa</dt><dd>{collectionPhaseLabel(detail as MessageJobDetail)}</dd></div> : null}<div><dt>{isAction ? "Completados" : "Aceptados"}</dt><dd>{accepted(detail)}</dd></div><div><dt>Fallidos</dt><dd>{detail.failed}</dd></div>{isAction ? <div><dt>Cancelados</dt><dd>{(detail as MdmDeviceActionJobDetail).cancelled}</dd></div> : null}</dl>
           <section className={styles.results}><h2>Resultado por equipo</h2><div className={styles.items}>{detail.items.map((item) => <article key={item.deviceId}><span className={styles.deviceIcon} aria-hidden="true">▣</span><div><strong>{item.deviceId}</strong><span>Intento{item.attempts === 1 ? "" : "s"} {item.attempts}</span>{item.lastError ? <small>{item.lastError}</small> : null}</div><span className={`${styles.status} ${styles[`status--${item.status}`]}`}>{isAction ? mdmDeviceActionJobItemLabel(item.status) : messageJobItemStatusLabel(item.status)}</span></article>)}</div></section>
         </section>
       ) : selectedJobId ? (
@@ -308,9 +340,9 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
           </section>
           {loading ? <p className={styles.empty}>Cargando ejecuciones…</p> : jobs.length === 0 ? <p className={styles.empty}>Todavía no hay ejecuciones registradas.</p> : visibleJobs.length === 0 ? <p className={styles.empty}>No hay ejecuciones que coincidan con los filtros.</p> : (
             <section className={styles.tableWrap} aria-label="Ejecuciones registradas">
-              <table><thead><tr><th>Acción</th><th>Estado</th><th>Fecha</th><th>Sucursal</th><th>Resultado</th><th>Acciones</th></tr></thead><tbody>
+              <table><thead><tr><th>Acción</th><th>Estado</th><th>Fecha</th><th>Sucursal</th>{!isAction ? <th>Etapa</th> : null}<th>Resultado</th><th>Acciones</th></tr></thead><tbody>
                 {pagedJobs.map((job) => <tr key={job.id} onClick={() => void openDetail(job.id)} className={styles.row}>
-                  <td><strong>{action(job)}</strong></td><td><span className={`${styles.status} ${styles[`status--${status(job)}`]}`}>◉ {label(job).replace(`${action(job)} · `, "")}</span></td><td>{formatDate(job.createdAt)}</td><td>{job.branchName || "Sin sucursal"}</td><td>{job.total} equipo{job.total === 1 ? "" : "s"} · {accepted(job)} ok · {job.failed} fallidos</td>
+                  <td><strong>{action(job)}</strong></td><td><span className={`${styles.status} ${styles[`status--${status(job)}`]}`}>◉ {label(job).replace(`${action(job)} · `, "")}</span></td><td>{formatDate(job.createdAt)}</td><td>{job.branchName || "Sin sucursal"}</td>{!isAction ? <td>{collectionPhaseLabel(job as MessageJob)}</td> : null}<td>{job.total} equipo{job.total === 1 ? "" : "s"} · {accepted(job)} ok · {job.failed} fallidos</td>
                   <td className={styles.rowActions}>{canCancel(job) ? <button type="button" onClick={(event) => { event.stopPropagation(); setJobToCancel(job); }} disabled={cancelling === job.id}>{cancelling === job.id ? "Cancelando…" : "Cancelar"}</button> : <button type="button" onClick={(event) => { event.stopPropagation(); setJobToRerun(job); }} disabled={!terminal(job) || rerunning === job.id}>{rerunning === job.id ? "Reejecutando…" : "Reejecutar"}</button>}<div className={styles.menu}><button type="button" aria-label="Más opciones" aria-expanded={menuJobId === job.id} onClick={(event) => { event.stopPropagation(); setMenuJobId(menuJobId === job.id ? "" : job.id); }}>⋮</button>{menuJobId === job.id ? <div className={styles.menuPanel}><button type="button" onClick={() => { setMenuJobId(""); void openDetail(job.id); }}>Ver detalle</button><Link href={`${editUrl}?editarEjecucion=${encodeURIComponent(job.id)}`}>Editar y reejecutar</Link></div> : null}</div></td>
                 </tr>)}
               </tbody></table>

@@ -73,6 +73,9 @@ export async function POST(request: Request) {
   );
 }
 
-export async function GET() {
-  return forwardMdmRequest(getMdmMessageJobsUrl(), undefined, 30_000, "GET");
+export async function GET(request: Request) {
+  const exportAll = new URL(request.url).searchParams.get("export") === "all";
+  const backendUrl = `${getMdmMessageJobsUrl()}${exportAll ? "?export=all" : ""}`;
+
+  return forwardMdmRequest(backendUrl, undefined, 30_000, "GET");
 }
