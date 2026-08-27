@@ -26,7 +26,14 @@ import styles from "./execution-history.module.css";
 import cancellationStyles from "./execution-history-cancellation.module.css";
 
 type Kind = "actions" | "messages";
-type ApiResponse = { status?: string; jobs?: unknown; job?: unknown; message?: string; error?: string };
+type ApiResponse = {
+  status?: string;
+  jobs?: unknown;
+  job?: unknown;
+  cancelled_jobs?: unknown;
+  message?: string;
+  error?: string;
+};
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("es-PY", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
@@ -123,8 +130,10 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
   const [loadingDetail, setLoadingDetail] = useState("");
   const [rerunning, setRerunning] = useState("");
   const [cancelling, setCancelling] = useState("");
+  const [isBulkCancelling, setIsBulkCancelling] = useState(false);
   const [jobToRerun, setJobToRerun] = useState<MdmDeviceActionJob | MessageJob | null>(null);
   const [jobToCancel, setJobToCancel] = useState<MdmDeviceActionJob | null>(null);
+  const [actionToBulkCancel, setActionToBulkCancel] = useState<"lock" | "unlock" | null>(null);
   const [notice, setNotice] = useState("");
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
@@ -210,6 +219,41 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
   }
 
   const title = isAction ? "Historial de bloqueo y desbloqueo" : "Historial de mensajería";
+  async function cancelQueuedJobs(action: "lock" | "unlock") {
+    setIsBulkCancelling(true);
+    setNotice("");
+    try {
+      const response = await fetch(`${baseUrl}/cancel-queued`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = (await response.json()) as ApiResponse;
+      if (
+        !response.ok ||
+        data.status !== "success" ||
+        typeof data.cancelled_jobs !== "number"
+      ) {
+        throw new Error(errorMessage(data));
+      }
+      const actionLabel = action === "lock" ? "bloqueo" : "desbloqueo";
+      setNotice(
+        data.cancelled_jobs === 0
+          ? `No había ejecuciones de ${actionLabel} en cola para cancelar.`
+          : `Se cancelaron ${data.cancelled_jobs} ejecuciones de ${actionLabel} en cola.`,
+      );
+      await loadJobs();
+    } catch (error) {
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "No se pudieron cancelar las ejecuciones en cola.",
+      );
+    } finally {
+      setIsBulkCancelling(false);
+    }
+  }
+
   const terminal = (job: MdmDeviceActionJob | MessageJob) =>
     isAction ? isTerminalMdmDeviceActionJob(job as MdmDeviceActionJob) : isTerminalMessageJob(job as MessageJob);
   const label = (job: MdmDeviceActionJob | MessageJob) => isAction
@@ -222,6 +266,13 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
     : "Mensaje";
   const canCancel = (job: MdmDeviceActionJob | MessageJob): job is MdmDeviceActionJob =>
     isAction && (job.status === "QUEUED" || job.status === "RUNNING");
+  const bulkCancellationAction = isAction
+    ? actionFilter === "bloquear"
+      ? "lock"
+      : actionFilter === "desbloquear"
+        ? "unlock"
+        : null
+    : null;
   const visibleJobs = useMemo(() => {
     const term = search.trim().toLowerCase();
     const periodMs = period === "all" ? null : Number(period) * 24 * 60 * 60 * 1000;
@@ -344,6 +395,12 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
             <select value={period} onChange={(event) => { setPeriod(event.target.value); setPage(1); }} aria-label="Filtrar por fecha"><option value="today">Hoy</option><option value="7">Últimos 7 días</option><option value="30">Últimos 30 días</option><option value="all">Todo el historial</option></select>
             <button className={styles.exportButton} type="button" onClick={() => setIsExportOpen(true)}><DownloadIcon />Exportar a Excel</button>
           </section>
+          {bulkCancellationAction ? (
+            <section className={styles.bulkCancellation} aria-label="Cancelación masiva">
+              <p>Se cancelarán únicamente las ejecuciones de {bulkCancellationAction === "lock" ? "bloqueo" : "desbloqueo"} que todavía estén en cola.</p>
+              <button type="button" onClick={() => setActionToBulkCancel(bulkCancellationAction)} disabled={isBulkCancelling}>{isBulkCancelling ? "Cancelando ejecuciones…" : `Cancelar ${bulkCancellationAction === "lock" ? "bloqueos" : "desbloqueos"} en cola`}</button>
+            </section>
+          ) : null}
           {loading ? <p className={styles.empty}>Cargando ejecuciones…</p> : jobs.length === 0 ? <p className={styles.empty}>Todavía no hay ejecuciones registradas.</p> : visibleJobs.length === 0 ? <p className={styles.empty}>No hay ejecuciones que coincidan con los filtros.</p> : (
             <section className={styles.tableWrap} aria-label="Ejecuciones registradas">
               <table><thead><tr><th>Acción</th><th>Estado</th><th>Fecha</th><th>Sucursal</th><th>Etapa</th><th>Resultado</th><th>Acciones</th></tr></thead><tbody>
@@ -381,6 +438,19 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
           const jobId = jobToCancel.id;
           setJobToCancel(null);
           void cancel(jobId);
+        }}
+      />
+      <ConfirmationDialog
+        isOpen={actionToBulkCancel !== null}
+        title={`¿Cancelar todas las ejecuciones de ${actionToBulkCancel === "lock" ? "bloqueo" : "desbloqueo"} en cola?`}
+        description="Solo se cancelarán los procesos que todavía no comenzaron. Las ejecuciones en curso, completadas o de la otra acción no se modificarán."
+        confirmLabel="Cancelar ejecuciones en cola"
+        onCancel={() => setActionToBulkCancel(null)}
+        onConfirm={() => {
+          if (!actionToBulkCancel) return;
+          const action = actionToBulkCancel;
+          setActionToBulkCancel(null);
+          void cancelQueuedJobs(action);
         }}
       />
       {isExportOpen ? (
