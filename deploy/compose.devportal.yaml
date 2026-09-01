@@ -1,0 +1,4 @@
+services:
+  web:
+    environment:
+      AUTH_COOKIE_SECURE: "true"
