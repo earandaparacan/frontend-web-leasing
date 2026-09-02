@@ -1,0 +1,144 @@
+.page {
+  min-height: 100svh;
+  padding: 48px 24px 80px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(255, 94, 43, 0.12), transparent 32%),
+    var(--canvas);
+}
+
+.content {
+  width: min(800px, 100%);
+  margin: 0 auto;
+  padding: clamp(28px, 6vw, 64px);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: 0 18px 50px rgba(23, 23, 23, 0.06);
+}
+
+.header {
+  padding-bottom: 32px;
+  border-bottom: 1px solid var(--border);
+}
+
+.wordmark {
+  display: inline-block;
+  color: #090909;
+  font-family: "Urbanist Variable", Urbanist, sans-serif;
+  font-size: 29px;
+  font-weight: 750;
+  letter-spacing: -1.8px;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.wordmark span {
+  color: var(--brand-orange);
+}
+
+.eyebrow {
+  margin: 42px 0 12px;
+  color: var(--brand-orange);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.header h1 {
+  margin: 0;
+  font-family: "Urbanist Variable", Urbanist, sans-serif;
+  font-size: clamp(40px, 7vw, 58px);
+  font-weight: 650;
+  letter-spacing: -0.055em;
+  line-height: 0.98;
+}
+
+.introduction {
+  max-width: 640px;
+  margin: 20px 0 0;
+  color: #555;
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.updated {
+  margin: 20px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.content section {
+  margin-top: 36px;
+}
+
+.content h2 {
+  margin: 0 0 12px;
+  color: #242424;
+  font-family: "Urbanist Variable", Urbanist, sans-serif;
+  font-size: clamp(23px, 4vw, 28px);
+  font-weight: 670;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.content p,
+.content li {
+  color: #515151;
+  font-size: 15px;
+  line-height: 1.72;
+}
+
+.content p {
+  margin: 0;
+}
+
+.content ul {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding-left: 22px;
+}
+
+.content li {
+  padding-left: 4px;
+}
+
+.content strong {
+  color: #2d2d2d;
+}
+
+.contact {
+  padding: 24px;
+  border-radius: 14px;
+  background: #fff3ee;
+}
+
+.contact a {
+  color: #b73a15;
+  font-weight: 700;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 520px) {
+  .page {
+    padding: 0;
+  }
+
+  .content {
+    padding: 32px 24px 56px;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .eyebrow {
+    margin-top: 34px;
+  }
+
+  .introduction,
+  .content p,
+  .content li {
+    font-size: 14px;
+  }
+}
