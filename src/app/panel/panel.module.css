@@ -457,7 +457,7 @@
 }
 
 @media (max-width: 460px) {
-  .metricGrid { grid-template-columns: 1fr; gap: 10px; }
+  .metricGrid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
   .metricCard { min-height: 140px; }
   .metricCard > strong { font-size: 34px; }
   .cardHeading { align-items: flex-start; }
@@ -801,12 +801,18 @@
 }
 
 @media (max-width: 460px) {
-  .metricCard { gap: 14px; }
+  .metricCard { min-width: 0; gap: 14px; }
   .metricIcon { flex-basis: 48px; width: 48px; height: 48px; }
+  .metricContent > small { white-space: normal; }
   .tooltipPanel { left: -20px; }
   .tooltipWrapper--red .tooltipPanel { right: -20px; left: auto; }
   .alertItem { grid-template-columns: 40px minmax(0, 1fr); padding: 14px; }
   .alertIcon { width: 40px; height: 40px; }
-  .alertItem > b { display: none; }
+  .alertAction {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: start;
+    margin-top: 8px;
+  }
   .cardHeading select { width: 100%; margin-left: 0; }
 }

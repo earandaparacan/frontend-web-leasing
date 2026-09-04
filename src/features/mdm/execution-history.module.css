@@ -52,4 +52,120 @@
     align-items: flex-start;
     flex-direction: column;
   }
+
+  .detail .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .detail .stats > div {
+    min-width: 0;
+    padding: 16px;
+  }
+
+  .detail .stats dt {
+    overflow-wrap: anywhere;
+    font-size: 13px;
+  }
+
+  .detail .stats dd {
+    overflow-wrap: anywhere;
+    font-size: 28px;
+  }
+
+  .detail .items article {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .detail .items article > .status {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .tableWrap {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+  }
+
+  .tableWrap table,
+  .tableWrap tbody,
+  .tableWrap tr,
+  .tableWrap td {
+    display: block;
+    width: 100%;
+  }
+
+  .tableWrap table {
+    min-width: 0;
+  }
+
+  .tableWrap thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  .tableWrap tbody {
+    display: grid;
+    gap: 12px;
+  }
+
+  .tableWrap tbody tr {
+    padding: 16px;
+    border: 1px solid #dde0e8;
+    border-radius: 14px;
+    background: #fff;
+  }
+
+  .tableWrap td {
+    padding: 0;
+    border: 0;
+    color: #465271;
+    font-size: 14px;
+    white-space: normal;
+  }
+
+  .tableWrap td + td {
+    margin-top: 12px;
+  }
+
+  .tableWrap td::before {
+    display: block;
+    margin-bottom: 4px;
+    color: #697080;
+    content: attr(data-label);
+    font-size: 11px;
+    font-weight: 750;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .tableWrap .status {
+    max-width: 100%;
+    font-size: 13px;
+    line-height: 1.35;
+    white-space: normal;
+  }
+
+  .tableWrap .rowActions {
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  .tableWrap .pagination {
+    margin-top: 12px;
+    border: 1px solid #dde0e8;
+    border-radius: 14px;
+    background: #fff;
+  }
+
+  .tableWrap .pagination div {
+    flex-wrap: wrap;
+  }
 }

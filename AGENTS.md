@@ -88,6 +88,7 @@ src/
 - Usar las clases y tokens definidos por el proyecto antes de introducir valores arbitrarios.
 - Mantener consistencia en colores, espaciado, tipografía, radios y sombras.
 - Diseñar con enfoque responsive, comenzando por pantallas pequeñas.
+- Verificar cada diseño en tamaños móviles antes de darlo por terminado: el contenido no debe desbordarse ni quedar oculto, y la navegación, controles y tarjetas deben adaptarse al ancho disponible.
 - Evitar estilos inline salvo valores verdaderamente dinámicos.
 - Extraer un componente cuando un patrón visual y semántico se repita.
 - No crear componentes solo para reutilizar una cadena de clases una única vez.
