@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  ChartIcon,
   CloseIcon,
   DashboardIcon,
   DeviceIcon,
@@ -20,6 +21,7 @@ import styles from "./workspace-navigation.module.css";
 
 const navigation = [
   { href: "/panel", label: "Dashboard", icon: DashboardIcon, exact: true },
+  { href: "/panel/monitor-odoo", label: "Monitor Odoo MDM", icon: ChartIcon, exact: false },
   { href: "/panel/dispositivos", label: "Lock / Unlock", icon: DeviceIcon, exact: false },
   { href: "/panel/mensajeria", label: "Mensajería MDM", icon: MessageIcon, exact: false },
   { href: "/panel/desafios-otp", label: "Desafíos OTP", icon: KeyIcon, exact: false },
