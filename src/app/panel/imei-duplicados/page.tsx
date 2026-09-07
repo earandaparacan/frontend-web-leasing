@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { DownloadIcon } from "@/components/icons";
 import { getCollectionConflicts } from "@/lib/collection-conflicts";
 import { firstQueryValue, formatStaffDate } from "@/lib/staff-data";
 import { StatusPill } from "@/features/workspace/staff-data-view";
@@ -22,6 +23,11 @@ export default async function ImeiConflictsPage({ searchParams }: {
   function pageHref(page: number) {
     return `/panel/imei-duplicados?${new URLSearchParams({ search, kind, history, page: String(page) })}`;
   }
+  const exportQuery = new URLSearchParams();
+  if (search) exportQuery.set("search", search);
+  if (kind) exportQuery.set("kind", kind);
+  if (history) exportQuery.set("history", history);
+  const exportHref = `/api/collections/imei-conflicts/export${exportQuery.size ? `?${exportQuery}` : ""}`;
 
   return (
     <div className={`${styles.page} workspace-page`}>
@@ -49,6 +55,7 @@ export default async function ImeiConflictsPage({ searchParams }: {
           <label>Tipo<select name="kind" defaultValue={kind}><option value="">Todos</option><option value="cross_customer">Clientes diferentes</option><option value="same_customer">Mismo cliente</option></select></label>
           <label>Vista<select name="history" defaultValue={history}><option value="">Última revisión</option><option value="1">Historial</option></select></label>
           <button type="submit">Aplicar filtros</button>
+          <a className={styles.exportButton} href={exportHref} download><DownloadIcon />Exportar a Excel</a>
           <Link href="/panel/imei-duplicados">Limpiar</Link>
         </form>
         {data.error ? <div role="alert" className={styles.empty}><strong>No se pudieron cargar los casos</strong><p>{data.error}</p><Link href={pageHref(data.pagination.page)}>Reintentar</Link></div> : (
