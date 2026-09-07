@@ -25,6 +25,7 @@ const navigation = [
   { href: "/panel/desafios-otp", label: "Desafíos OTP", icon: KeyIcon, exact: false },
   { href: "/panel/usuarios", label: "Usuarios", icon: UsersIcon, exact: false },
   { href: "/panel/pagopar", label: "Pagopar transactions", icon: ReceiptIcon, exact: false },
+  { href: "/panel/imei-duplicados", label: "IMEI duplicados", icon: ShieldIcon, exact: false },
 ] as const;
 
 export function WorkspaceNavigation({ user }: { user: StaffUser }) {
