@@ -35,7 +35,7 @@
 .header h1 {
   margin: 8px 0 10px;
   font-family: "Urbanist Variable", Urbanist, sans-serif;
-  font-size: clamp(40px, 4.6vw, 58px);
+  font-size: clamp(40px, 4.8cqi, 58px);
   font-weight: 630;
   letter-spacing: -0.052em;
   line-height: 1;
@@ -715,4 +715,43 @@
   .historyActions { justify-content: flex-start; }
   .detailDrawerBackdrop { display: none; }
   .historyDrawer { width: 100%; padding: 22px; }
+}
+
+@container workspace (max-width: 1150px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .mainColumn {
+    display: grid;
+    gap: 28px;
+  }
+
+  .mainColumn > .card:first-child,
+  .mainColumn > .results,
+  .mainColumn > .messageCard,
+  .sidebar {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .card:not(.messageCard),
+  .historyPreview {
+    min-height: 0;
+  }
+}
+
+@container workspace (max-width: 650px) {
+  .header {
+    display: grid;
+  }
+
+  .headerIcon {
+    grid-row: 1;
+  }
+
+  .targetModes,
+  .templateControls {
+    grid-template-columns: 1fr;
+  }
 }

@@ -36,7 +36,7 @@
   letter-spacing: -0.035em;
 }
 
-.hero h1 { font-size: clamp(42px, 5vw, 62px); font-weight: 660; }
+.hero h1 { font-size: clamp(42px, 5cqi, 62px); font-weight: 660; }
 
 .hero p,
 .listHeading p {
@@ -115,4 +115,19 @@
   .hero { display: grid; }
   .summary { max-width: none; }
   .listHeading { align-items: flex-start; flex-direction: column; }
+}
+
+@container workspace (max-width: 700px) {
+  .hero {
+    display: grid;
+  }
+
+  .summary {
+    max-width: none;
+  }
+
+  .listHeading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }

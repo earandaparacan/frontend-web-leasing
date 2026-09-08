@@ -1,5 +1,7 @@
 .page {
   padding-bottom: 70px;
+  container-name: operational-dashboard;
+  container-type: inline-size;
 }
 
 .welcome {
@@ -483,7 +485,7 @@
 
 .welcome h1 {
   margin: 13px 0 10px;
-  font-size: clamp(48px, 4.25vw, 66px);
+  font-size: clamp(48px, 5cqi, 66px);
   font-weight: 650;
 }
 
@@ -516,9 +518,10 @@
 .metricCard {
   min-height: 204px;
   padding: 36px 28px;
-  display: flex;
+  display: grid;
+  grid-template-columns: 61px minmax(0, 1fr);
   align-items: flex-start;
-  gap: 50px;
+  gap: 12px 24px;
   border-radius: 17px;
 }
 
@@ -658,7 +661,7 @@
   color: #555967;
   font-size: 14px;
   line-height: 1.35;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .metricDetailPositive { color: #4d914f !important; }
@@ -671,9 +674,9 @@
 }
 
 .metricCard > a {
-  bottom: 22px;
-  left: 28px;
   display: flex;
+  grid-column: 2;
+  width: fit-content;
   align-items: center;
   gap: 5px;
   color: #d72323;
@@ -794,6 +797,48 @@
 }
 
 .historyLink svg { width: 19px; height: 19px; }
+
+@container operational-dashboard (max-width: 1280px) {
+  .metricGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container operational-dashboard (max-width: 1050px) {
+  .operationGrid,
+  .bottomGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@container operational-dashboard (max-width: 700px) {
+  .welcome,
+  .sectionHeading {
+    align-items: flex-start;
+  }
+
+  .welcome {
+    display: grid;
+    margin-bottom: 38px;
+  }
+
+  .status {
+    width: fit-content;
+    min-width: 0;
+  }
+
+  .sectionHeading {
+    display: grid;
+  }
+
+  .metricGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .operationGrid {
+    margin-top: 26px;
+  }
+}
 
 @media (max-width: 700px) {
   .cardHeading { flex-wrap: wrap; }

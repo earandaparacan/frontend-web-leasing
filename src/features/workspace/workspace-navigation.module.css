@@ -9,6 +9,7 @@
   color: #fff;
   background: #111;
   box-shadow: 14px 0 50px -42px rgba(0, 0, 0, 0.85);
+  overflow-y: auto;
 }
 
 .brand {
@@ -219,5 +220,28 @@
     display: block;
     background: rgba(0, 0, 0, 0.42);
     backdrop-filter: blur(2px);
+  }
+}
+
+@media (max-height: 760px) and (min-width: 901px) {
+  .sidebar {
+    padding-block: 20px;
+  }
+
+  .brand {
+    padding-bottom: 20px;
+  }
+
+  .navigation {
+    gap: 3px;
+    padding-top: 20px;
+  }
+
+  .navigation a {
+    min-height: 40px;
+  }
+
+  .sidebarFooter {
+    gap: 9px;
   }
 }

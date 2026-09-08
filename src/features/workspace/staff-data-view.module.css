@@ -35,7 +35,7 @@
 .header h1 {
   margin: 8px 0 10px;
   font-family: "Urbanist Variable", Urbanist, sans-serif;
-  font-size: clamp(40px, 4.6vw, 58px);
+  font-size: clamp(40px, 4.8cqi, 58px);
   font-weight: 630;
   letter-spacing: -0.052em;
   line-height: 1;
@@ -198,4 +198,26 @@
   .filters label { grid-column: 1 / -1; width: 100%; }
   .filters button { width: 100%; }
   .filters > a { align-self: center; }
+}
+
+@container workspace (max-width: 900px) {
+  .filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filters label {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .filters button {
+    width: 100%;
+  }
+}
+
+@container workspace (max-width: 650px) {
+  .header {
+    display: grid;
+  }
 }

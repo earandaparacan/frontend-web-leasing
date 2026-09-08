@@ -66,7 +66,7 @@
 .hero h1 {
   margin: 0;
   font-family: "Urbanist Variable", Urbanist, sans-serif;
-  font-size: clamp(42px, 5vw, 64px);
+  font-size: clamp(42px, 5cqi, 64px);
   font-weight: 640;
   letter-spacing: -0.052em;
   line-height: 0.98;
@@ -1096,4 +1096,44 @@
     width: 100%;
   }
 
+}
+
+@container workspace (max-width: 1100px) {
+  .actionFields {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .contentLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .historyPreview {
+    grid-column: auto;
+    grid-row: auto;
+    min-height: 0;
+  }
+
+  .queryCard,
+  .queryCard form {
+    min-height: 0;
+  }
+}
+
+@container workspace (max-width: 720px) {
+  .hero {
+    display: block;
+  }
+
+  .heroActions {
+    justify-content: flex-start;
+    margin-top: 22px;
+  }
+
+  .actionFields {
+    grid-template-columns: 1fr;
+  }
+
+  .actionButtons {
+    grid-template-columns: 1fr;
+  }
 }

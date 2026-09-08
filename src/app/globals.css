@@ -113,6 +113,8 @@ a {
   min-width: 0;
   min-height: 100svh;
   margin-left: 264px;
+  container-name: workspace;
+  container-type: inline-size;
 }
 
 .workspace-page {
