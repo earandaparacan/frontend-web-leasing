@@ -32,6 +32,12 @@
   letter-spacing: 0.13em;
 }
 
+.eyebrow {
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
 .header h1 {
   margin: 8px 0 10px;
   font-family: "Urbanist Variable", Urbanist, sans-serif;

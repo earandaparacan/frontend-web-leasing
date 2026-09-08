@@ -1,7 +1,7 @@
 .page { min-width: 0; padding-bottom: 72px; }
 .back, .textButton { color: #697080; font-size: 15px; font-weight: 650; text-decoration: none; background: none; cursor: pointer; }
 .header { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin: 40px 0 30px; }
-.header span { color: var(--brand-orange); font-size: 16px; font-weight: 800; letter-spacing: .02em; }
+.header span { color: var(--brand-orange); font-size: 13px; font-weight: 750; letter-spacing: .16em; text-transform: uppercase; }
 .header h1 { margin: 17px 0 0; color: #11192f; font-family: "Urbanist Variable", Urbanist, sans-serif; font-size: clamp(42px, 4.6cqi, 60px); font-weight: 680; letter-spacing: -.045em; line-height: .98; }
 .header > button { min-width: 158px; padding: 15px 22px; border: 1px solid #9eabff; border-radius: 10px; color: #4454c9; background: #fff; font-size: 15px; font-weight: 750; cursor: pointer; }
 .header > button:hover, .rowActions > button:hover { border-color: #4454c9; background: #f8f9ff; }.header > button:disabled { opacity: .65; cursor: wait; }
