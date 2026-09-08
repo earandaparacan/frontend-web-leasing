@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
-import { CheckIcon, LockIcon, ShieldIcon } from "@/components/icons";
+import { CheckIcon, ChevronRightIcon, LockIcon, ShieldIcon } from "@/components/icons";
 import {
   isTerminalMdmDeviceActionJob,
   mdmDeviceActionJobItemLabel,
@@ -882,6 +882,12 @@ export function DeviceManagement() {
 
   return (
     <div className={`${styles.page} workspace-page`}>
+      <nav className={styles.breadcrumb} aria-label="Migas de pan">
+        <Link href="/panel">Dashboard</Link>
+        <ChevronRightIcon />
+        <span>Lock / Unlock</span>
+      </nav>
+
       <section className={styles.hero}>
         <div>
           <span className={styles.kicker}>Gestión MDM</span>
