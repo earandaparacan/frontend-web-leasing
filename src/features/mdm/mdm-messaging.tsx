@@ -218,7 +218,13 @@ function downloadJobSummary(job: MessageJobDetail) {
   URL.revokeObjectURL(url);
 }
 
-export function MdmMessaging() {
+type MdmMessagingPermissions = {
+  canSend: boolean;
+  canManageTemplates: boolean;
+  canRetry: boolean;
+};
+
+export function MdmMessaging({ permissions }: { permissions: MdmMessagingPermissions }) {
   const [targetMode, setTargetMode] = useState<"devices" | "group" | "all">("devices");
   const [input, setInput] = useState("");
   const [devices, setDevices] = useState<Device[]>([]);
@@ -1349,13 +1355,13 @@ export function MdmMessaging() {
                     ))}
                   </select>
                 </label>
-                <button
+                {permissions.canManageTemplates ? <button
                   type="button"
                   onClick={() => void handleSaveTemplate()}
                   disabled={isSavingTemplate || isSending}
                 >
                   {isSavingTemplate ? "Guardando…" : "Guardar como plantilla"}
-                </button>
+                </button> : null}
               </div>
 
               <label className={styles.messageField}>
@@ -1427,6 +1433,7 @@ export function MdmMessaging() {
                   (targetMode === "group" && !selectedGroup) ||
                   !message.trim() ||
                   !selectedBranchValue ||
+                  !permissions.canSend ||
                   isSending ||
                   isVerifying ||
                   isLoadingGroups ||
@@ -1634,7 +1641,7 @@ export function MdmMessaging() {
                           >
                             {loadingDetailJobId === job.id ? "Abriendo…" : "Ver detalle"}
                           </button>
-                          {isTerminalMessageJob(job) ? (
+                          {permissions.canRetry && isTerminalMessageJob(job) ? (
                             <button
                               type="button"
                               onClick={() => setJobToRerun(job)}

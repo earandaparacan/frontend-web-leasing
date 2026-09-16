@@ -15,17 +15,21 @@ import {
   UsersIcon,
 } from "@/components/icons";
 import { LogoutButton } from "@/features/auth/logout-button";
-import type { StaffUser } from "@/lib/staff-session";
+import {
+  hasStaffPermission,
+  STAFF_PERMISSIONS,
+  type StaffUser,
+} from "@/lib/staff-permissions";
 import styles from "./workspace-navigation.module.css";
 
 const navigation = [
-  { href: "/panel", label: "Dashboard", icon: DashboardIcon, exact: true },
-  { href: "/panel/dispositivos", label: "Lock / Unlock", icon: DeviceIcon, exact: false },
-  { href: "/panel/mensajeria", label: "Mensajería MDM", icon: MessageIcon, exact: false },
-  { href: "/panel/desafios-otp", label: "Desafíos OTP", icon: KeyIcon, exact: false },
-  { href: "/panel/usuarios", label: "Usuarios", icon: UsersIcon, exact: false },
-  { href: "/panel/pagopar", label: "Pagopar transactions", icon: ReceiptIcon, exact: false },
-  { href: "/panel/imei-duplicados", label: "IMEI duplicados", icon: ShieldIcon, exact: false },
+  { href: "/panel", label: "Dashboard", icon: DashboardIcon, exact: true, permission: STAFF_PERMISSIONS.dashboard },
+  { href: "/panel/dispositivos", label: "Lock / Unlock", icon: DeviceIcon, exact: false, permission: STAFF_PERMISSIONS.devices },
+  { href: "/panel/mensajeria", label: "Mensajería MDM", icon: MessageIcon, exact: false, permission: STAFF_PERMISSIONS.messages },
+  { href: "/panel/desafios-otp", label: "Desafíos OTP", icon: KeyIcon, exact: false, permission: STAFF_PERMISSIONS.otpChallenges },
+  { href: "/panel/usuarios", label: "Usuarios", icon: UsersIcon, exact: false, permission: STAFF_PERMISSIONS.users },
+  { href: "/panel/pagopar", label: "Pagopar transactions", icon: ReceiptIcon, exact: false, permission: STAFF_PERMISSIONS.pagopar },
+  { href: "/panel/imei-duplicados", label: "IMEI duplicados", icon: ShieldIcon, exact: false, permission: STAFF_PERMISSIONS.imeiConflicts },
 ] as const;
 
 export function WorkspaceNavigation({ user }: { user: StaffUser }) {
@@ -68,7 +72,7 @@ export function WorkspaceNavigation({ user }: { user: StaffUser }) {
 
         <nav className={styles.navigation} aria-label="Navegación principal">
           <span className={styles.navLabel}>MENÚ PRINCIPAL</span>
-          {navigation.map((item) => {
+          {navigation.filter((item) => hasStaffPermission(user, item.permission)).map((item) => {
             const Icon = item.icon;
             const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
             return (
@@ -98,7 +102,7 @@ export function WorkspaceNavigation({ user }: { user: StaffUser }) {
             <span className={styles.avatar}>{user.username.slice(0, 1).toUpperCase()}</span>
             <div>
               <strong>{user.username}</strong>
-              <small>{user.groups[0]}</small>
+              <small>{user.is_superuser ? "Administrador" : user.groups[0]}</small>
             </div>
           </div>
           <LogoutButton />

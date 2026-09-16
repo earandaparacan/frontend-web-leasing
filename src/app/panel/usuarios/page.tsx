@@ -6,6 +6,7 @@ import {
   getStaffCollection,
   type StaffUserRecord,
 } from "@/lib/staff-data";
+import { requireStaffPermission, STAFF_PERMISSIONS } from "@/lib/staff-session";
 
 export const metadata: Metadata = {
   title: "Usuarios | Teklease",
@@ -17,6 +18,7 @@ export default async function UsersPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  await requireStaffPermission(STAFF_PERMISSIONS.users);
   const params = await searchParams;
   const search = firstQueryValue(params.search);
   const type = firstQueryValue(params.type);

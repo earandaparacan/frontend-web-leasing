@@ -200,7 +200,14 @@ function downloadActionJobSummary(job: MdmDeviceActionJobDetail) {
 
 const ACTIVE_ACTION_JOB_KEY = "teklease-active-mdm-device-action-job";
 
-export function DeviceManagement() {
+type DeviceManagementPermissions = {
+  canLock: boolean;
+  canUnlock: boolean;
+  canManageTemplates: boolean;
+  canRetry: boolean;
+};
+
+export function DeviceManagement({ permissions }: { permissions: DeviceManagementPermissions }) {
   const [input, setInput] = useState("");
   const [devices, setDevices] = useState<Device[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -1078,18 +1085,18 @@ export function DeviceManagement() {
                     ))}
                   </select>
                 </label>
-                <button
+                {permissions.canManageTemplates ? <button
                   className={styles.saveTemplate}
                   type="button"
                   onClick={saveTemplate}
                   disabled={isSavingTemplate}
                 >
                   {isSavingTemplate ? "Guardando…" : "Guardar mensaje"}
-                </button>
+                </button> : null}
               </div>
 
               <div className={styles.actionButtons}>
-                <button
+                {permissions.canUnlock ? <button
                   className={styles.unlockButton}
                   type="button"
                   onClick={() => requestAction("unlock")}
@@ -1101,8 +1108,8 @@ export function DeviceManagement() {
                     : selectedDevices.length > 0
                       ? "Desbloquear seleccionados"
                       : "Registrar no encontrados"}
-                </button>
-                <button
+                </button> : null}
+                {permissions.canLock ? <button
                   className={styles.lockButton}
                   type="button"
                   onClick={() => requestAction("lock")}
@@ -1114,7 +1121,7 @@ export function DeviceManagement() {
                     : selectedDevices.length > 0
                       ? "Bloquear seleccionados"
                       : "Registrar no encontrados"}
-                </button>
+                </button> : null}
               </div>
             </section>
           ) : null}
@@ -1317,7 +1324,7 @@ export function DeviceManagement() {
                           >
                             {loadingDetailJobId === job.id ? "Abriendo…" : "Ver detalle"}
                           </button>
-                          {isTerminalMdmDeviceActionJob(job) ? (
+                          {permissions.canRetry && isTerminalMdmDeviceActionJob(job) ? (
                             <button
                               type="button"
                               onClick={() => setJobToRerun(job)}

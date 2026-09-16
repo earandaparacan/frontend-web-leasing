@@ -7,6 +7,7 @@ import {
   getStaffCollection,
   type OtpChallengeRecord,
 } from "@/lib/staff-data";
+import { requireStaffPermission, STAFF_PERMISSIONS } from "@/lib/staff-session";
 
 export const metadata: Metadata = {
   title: "Desafíos OTP | Teklease",
@@ -34,6 +35,7 @@ export default async function OtpChallengesPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  await requireStaffPermission(STAFF_PERMISSIONS.otpChallenges);
   const params = await searchParams;
   const search = firstQueryValue(params.search);
   const status = firstQueryValue(params.status);

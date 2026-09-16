@@ -7,6 +7,7 @@ import {
   getStaffCollection,
   type PagoparTransactionRecord,
 } from "@/lib/staff-data";
+import { requireStaffPermission, STAFF_PERMISSIONS } from "@/lib/staff-session";
 
 export const metadata: Metadata = {
   title: "Transacciones Pagopar | Teklease",
@@ -45,6 +46,7 @@ export default async function PagoparTransactionsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  await requireStaffPermission(STAFF_PERMISSIONS.pagopar);
   const params = await searchParams;
   const search = firstQueryValue(params.search);
   const status = firstQueryValue(params.status);

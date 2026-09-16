@@ -14,7 +14,7 @@ import {
   ShieldIcon,
 } from "@/components/icons";
 import { getOperationalDashboard } from "@/lib/operational-dashboard";
-import { getStaffUser } from "@/lib/staff-session";
+import { requireStaffPermission, STAFF_PERMISSIONS } from "@/lib/staff-session";
 import styles from "./panel.module.css";
 
 export const metadata: Metadata = {
@@ -72,7 +72,8 @@ function executionDetailHref(type: string, id: string) {
 }
 
 export default async function PanelPage() {
-  const [user, result] = await Promise.all([getStaffUser(), getOperationalDashboard()]);
+  const user = await requireStaffPermission(STAFF_PERMISSIONS.dashboard);
+  const result = await getOperationalDashboard();
   const dashboard = result.dashboard;
   const summary = dashboard?.summary;
   const metrics = [

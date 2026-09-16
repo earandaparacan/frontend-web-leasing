@@ -4,6 +4,7 @@ import { DownloadIcon } from "@/components/icons";
 import { getCollectionConflicts } from "@/lib/collection-conflicts";
 import { firstQueryValue, formatStaffDate } from "@/lib/staff-data";
 import { StatusPill } from "@/features/workspace/staff-data-view";
+import { hasStaffPermission, requireStaffPermission, STAFF_PERMISSIONS } from "@/lib/staff-session";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = {
@@ -14,6 +15,8 @@ export const metadata: Metadata = {
 export default async function ImeiConflictsPage({ searchParams }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const user = await requireStaffPermission(STAFF_PERMISSIONS.imeiConflicts);
+  const canExport = hasStaffPermission(user, STAFF_PERMISSIONS.exportImeiConflicts);
   const params = await searchParams;
   const search = firstQueryValue(params.search);
   const kind = firstQueryValue(params.kind);
@@ -55,7 +58,7 @@ export default async function ImeiConflictsPage({ searchParams }: {
           <label>Tipo<select name="kind" defaultValue={kind}><option value="">Todos</option><option value="cross_customer">Clientes diferentes</option><option value="same_customer">Mismo cliente</option></select></label>
           <label>Vista<select name="history" defaultValue={history}><option value="">Última revisión</option><option value="1">Historial</option></select></label>
           <button type="submit">Aplicar filtros</button>
-          <a className={styles.exportButton} href={exportHref} download><DownloadIcon />Exportar a Excel</a>
+          {canExport ? <a className={styles.exportButton} href={exportHref} download><DownloadIcon />Exportar a Excel</a> : null}
           <Link href="/panel/imei-duplicados">Limpiar</Link>
         </form>
         {data.error ? <div role="alert" className={styles.empty}><strong>No se pudieron cargar los casos</strong><p>{data.error}</p><Link href={pageHref(data.pagination.page)}>Reintentar</Link></div> : (

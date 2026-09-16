@@ -1,11 +1,18 @@
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { cache } from "react";
 import { getBackendUrl } from "@/lib/backend";
+import {
+  getDefaultStaffPath,
+  hasStaffPermission,
+  type StaffUser,
+} from "@/lib/staff-permissions";
 
-export type StaffUser = {
-  username: string;
-  groups: string[];
-};
+export {
+  hasStaffPermission,
+  STAFF_PERMISSIONS,
+  type StaffUser,
+} from "@/lib/staff-permissions";
 
 const allowedGroups = new Set([
   "Atención al cliente",
@@ -26,16 +33,25 @@ export const getStaffUser = cache(async (): Promise<StaffUser> => {
     signal: AbortSignal.timeout(15_000),
   });
   const data = (await response.json()) as {
-    user?: { username: string; user_type: string; groups: string[] };
+    user?: StaffUser & { user_type: string };
   };
 
   if (
     !response.ok ||
     data.user?.user_type !== "staff" ||
-    !data.user.groups.some((group) => allowedGroups.has(group))
+    (!data.user.is_superuser &&
+      !data.user.groups.some((group) => allowedGroups.has(group)))
   ) {
     throw new Error("Unauthorized staff session");
   }
 
   return data.user;
 });
+
+export async function requireStaffPermission(permission: string) {
+  const user = await getStaffUser();
+  if (!hasStaffPermission(user, permission)) {
+    redirect(getDefaultStaffPath(user));
+  }
+  return user;
+}
