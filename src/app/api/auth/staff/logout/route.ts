@@ -24,5 +24,6 @@ export async function POST(request: NextRequest) {
   const response = NextResponse.json({ status: "success" });
   response.cookies.delete("teklease_staff_session");
   response.cookies.delete("teklease_staff_csrf");
+  response.cookies.delete("teklease_staff_persistent");
   return response;
 }

@@ -1,0 +1,153 @@
+.page {
+  padding-bottom: 60px;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 42px;
+  color: #9a9aa1;
+  font-size: 14px;
+}
+
+.breadcrumb a {
+  text-decoration: none;
+}
+
+.breadcrumb a:hover {
+  color: var(--brand-orange);
+}
+
+.breadcrumb span:last-child {
+  color: #555764;
+  font-weight: 650;
+}
+
+.header {
+  margin-bottom: 34px;
+}
+
+.header > span,
+.cardHeader > span,
+.profileCard > div > span {
+  color: var(--brand-orange);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.15em;
+}
+
+.header h1 {
+  margin: 10px 0 9px;
+  color: #181925;
+  font-family: "Urbanist Variable", Urbanist, sans-serif;
+  font-size: clamp(46px, 4vw, 62px);
+  font-weight: 680;
+  letter-spacing: -0.052em;
+  line-height: 0.95;
+}
+
+.header p,
+.cardHeader p,
+.profileCard p {
+  margin: 0;
+  color: #777984;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.72fr) minmax(420px, 1.28fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.profileCard,
+.passwordCard {
+  border: 1px solid #e5e5e8;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 16px 36px rgba(25, 22, 44, 0.05);
+}
+
+.profileCard {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 30px;
+}
+
+.avatar {
+  display: grid;
+  width: 62px;
+  height: 62px;
+  flex: 0 0 62px;
+  place-items: center;
+  border-radius: 17px;
+  color: #fff;
+  background: var(--brand-orange);
+  font-family: "Urbanist Variable", Urbanist, sans-serif;
+  font-size: 23px;
+  font-weight: 720;
+}
+
+.profileCard h2 {
+  margin: 7px 0 4px;
+  color: #20212c;
+  font-family: "Urbanist Variable", Urbanist, sans-serif;
+  font-size: 25px;
+  font-weight: 700;
+}
+
+.profileCard > div > span {
+  color: #888a94;
+  font-size: 10px;
+}
+
+.passwordCard {
+  padding: 34px;
+}
+
+.cardHeader {
+  margin-bottom: 28px;
+  padding-bottom: 25px;
+  border-bottom: 1px solid #e9e9eb;
+}
+
+.cardHeader h2 {
+  margin: 8px 0 9px;
+  color: #20212c;
+  font-family: "Urbanist Variable", Urbanist, sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+@container workspace (max-width: 850px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@container workspace (max-width: 520px) {
+  .breadcrumb {
+    margin-bottom: 30px;
+  }
+
+  .profileCard,
+  .passwordCard {
+    padding: 22px;
+  }
+
+  .profileCard {
+    align-items: flex-start;
+  }
+
+  .avatar {
+    width: 52px;
+    height: 52px;
+    flex-basis: 52px;
+    border-radius: 14px;
+  }
+}

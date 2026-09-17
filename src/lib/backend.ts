@@ -5,6 +5,14 @@ export function getBackendUrl(path: string): string {
   return `${baseUrl.replace(/\/$/, "")}${path}`;
 }
 
+export function backendCookieValue(
+  setCookie: string | null,
+  name: string,
+): string | null {
+  const match = setCookie?.match(new RegExp(`(?:^|,\\s*)${name}=([^;]+)`));
+  return match?.[1] ?? null;
+}
+
 export async function readBackendJson(response: Response): Promise<unknown> {
   const contentType = response.headers.get("content-type");
 

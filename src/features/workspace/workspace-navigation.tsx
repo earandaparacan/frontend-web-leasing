@@ -100,13 +100,19 @@ export function WorkspaceNavigation({ user }: { user: StaffUser }) {
               <span>Conexión protegida</span>
             </div>
           </div>
-          <div className={styles.user}>
+          <Link
+            className={styles.user}
+            href="/panel/mi-cuenta"
+            aria-label="Abrir mi cuenta"
+            aria-current={pathname === "/panel/mi-cuenta" ? "page" : undefined}
+            onClick={() => setIsOpen(false)}
+          >
             <span className={styles.avatar}>{user.username.slice(0, 1).toUpperCase()}</span>
             <div>
               <strong>{user.username}</strong>
               <small>{user.is_superuser ? "Administrador" : user.groups[0]}</small>
             </div>
-          </div>
+          </Link>
           <LogoutButton />
         </div>
       </aside>

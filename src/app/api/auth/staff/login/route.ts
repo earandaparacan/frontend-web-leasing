@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  backendCookieValue,
   backendUnavailableResponse,
   getBackendUrl,
   readBackendJson,
@@ -10,11 +11,6 @@ type LoginPayload = {
   password?: unknown;
   remember?: unknown;
 };
-
-function cookieValue(setCookie: string | null, name: string): string | null {
-  const match = setCookie?.match(new RegExp(`(?:^|,\\s*)${name}=([^;]+)`));
-  return match?.[1] ?? null;
-}
 
 export async function POST(request: Request) {
   try {
@@ -38,7 +34,7 @@ export async function POST(request: Request) {
     const csrfData = (await readBackendJson(csrfResponse)) as {
       csrf_token?: string;
     };
-    const csrfCookie = cookieValue(
+    const csrfCookie = backendCookieValue(
       csrfResponse.headers.get("set-cookie"),
       "csrftoken",
     );
@@ -72,9 +68,9 @@ export async function POST(request: Request) {
     }
 
     const setCookie = loginResponse.headers.get("set-cookie");
-    const sessionCookie = cookieValue(setCookie, "sessionid");
+    const sessionCookie = backendCookieValue(setCookie, "sessionid");
     const rotatedCsrfCookie =
-      cookieValue(setCookie, "csrftoken") ?? csrfCookie;
+      backendCookieValue(setCookie, "csrftoken") ?? csrfCookie;
 
     if (!sessionCookie) {
       return backendUnavailableResponse();
@@ -93,6 +89,11 @@ export async function POST(request: Request) {
 
     result.cookies.set("teklease_staff_session", sessionCookie, common);
     result.cookies.set("teklease_staff_csrf", rotatedCsrfCookie, common);
+    if (persistent) {
+      result.cookies.set("teklease_staff_persistent", "1", common);
+    } else {
+      result.cookies.delete("teklease_staff_persistent");
+    }
 
     return result;
   } catch {
