@@ -61,6 +61,48 @@ export type PagoparTransactionRecord = {
   updated_at: string;
 };
 
+export type InfonetTransactionRecord = {
+  id: number;
+  tid: number;
+  subscriber_id: string;
+  invoice_id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  status_label: string;
+  odoo_partner_id: number | null;
+  odoo_invoice_id: number | null;
+  odoo_invoice_name: string;
+  odoo_payment_id: number | null;
+  transaction_date: string;
+  transaction_time: string;
+  paid_at: string | null;
+  reversed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type OdooPaymentEventRecord = {
+  id: number;
+  event_id: string;
+  event_type: string;
+  event_type_label: string;
+  state: string;
+  state_label: string;
+  odoo_id: string;
+  customer_name: string;
+  triggered_by_user_id: number | null;
+  triggered_by_user_name: string;
+  promise_date: string | null;
+  status: string;
+  status_label: string;
+  device_count: number;
+  imeis: string[];
+  action_job_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 const emptyPagination: Pagination = {
   page: 1,
   page_size: 20,

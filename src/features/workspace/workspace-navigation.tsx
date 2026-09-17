@@ -29,6 +29,8 @@ const navigation = [
   { href: "/panel/desafios-otp", label: "Desafíos OTP", icon: KeyIcon, exact: false, permission: STAFF_PERMISSIONS.otpChallenges },
   { href: "/panel/usuarios", label: "Usuarios", icon: UsersIcon, exact: false, permission: STAFF_PERMISSIONS.users },
   { href: "/panel/pagopar", label: "Pagopar transactions", icon: ReceiptIcon, exact: false, permission: STAFF_PERMISSIONS.pagopar },
+  { href: "/panel/infonet", label: "Infonet transactions", icon: ReceiptIcon, exact: false, permission: STAFF_PERMISSIONS.infonet },
+  { href: "/panel/odoo-payment-events", label: "Odoo payment events", icon: ReceiptIcon, exact: false, permission: STAFF_PERMISSIONS.odooPaymentEvents },
   { href: "/panel/imei-duplicados", label: "IMEI duplicados", icon: ShieldIcon, exact: false, permission: STAFF_PERMISSIONS.imeiConflicts },
 ] as const;
 
