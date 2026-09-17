@@ -73,9 +73,14 @@
 
 .profileCard {
   display: flex;
+  min-width: 0;
   align-items: center;
   gap: 18px;
   padding: 30px;
+}
+
+.profileCard > div {
+  min-width: 0;
 }
 
 .avatar {
@@ -93,11 +98,13 @@
 }
 
 .profileCard h2 {
+  max-width: 100%;
   margin: 7px 0 4px;
   color: #20212c;
   font-family: "Urbanist Variable", Urbanist, sans-serif;
   font-size: 25px;
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .profileCard > div > span {

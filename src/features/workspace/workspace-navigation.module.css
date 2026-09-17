@@ -123,6 +123,13 @@
   font-size: 9px;
 }
 
+.user strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .securityNote span,
 .user small {
   overflow: hidden;

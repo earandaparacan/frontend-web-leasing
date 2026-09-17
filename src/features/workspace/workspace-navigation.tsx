@@ -103,6 +103,7 @@ export function WorkspaceNavigation({ user }: { user: StaffUser }) {
           <Link
             className={styles.user}
             href="/panel/mi-cuenta"
+            title={user.username}
             aria-label="Abrir mi cuenta"
             aria-current={pathname === "/panel/mi-cuenta" ? "page" : undefined}
             onClick={() => setIsOpen(false)}
