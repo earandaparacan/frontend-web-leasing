@@ -10,6 +10,7 @@ import {
   LockIcon,
   ReceiptIcon,
   ShieldIcon,
+  UserIcon,
 } from "@/components/icons";
 import { StatusPill } from "@/features/workspace/staff-data-view";
 import {
@@ -110,11 +111,17 @@ function CollectionsDashboard({ summary }: { summary: CollectionCasesSummary }) 
         <MetricCard icon={<ShieldIcon />} label="Promesas vigentes" value={summary.valid_promises} description="Órdenes con compromiso válido" tone="good" />
       </div>
       <div className={styles.phaseSummary}>
-        <span>Distribución de órdenes activas</span>
-        <div>
+        <h3>Distribución de órdenes activas</h3>
+        <div className={styles.phaseValues}>
           {PHASES.map((phase) => (
-            <span key={phase.key}><small>{phase.label}</small><strong>{summary.phases[phase.key].toLocaleString("es-PY")}</strong></span>
+            <span key={phase.key}>
+              <small>{phase.label}</small>
+              <strong>{summary.phases[phase.key].toLocaleString("es-PY")}</strong>
+            </span>
           ))}
+        </div>
+        <div className={styles.phaseBar} aria-hidden="true">
+          {PHASES.map((phase) => <span className={styles[`phase--${phase.key}`]} key={phase.key} />)}
         </div>
       </div>
     </section>
@@ -125,11 +132,6 @@ function CaseCard({ collectionCase }: { collectionCase: CollectionCase }) {
   return (
     <article className={styles.caseCard}>
       <header>
-        <div>
-          <span>ORDEN ODOO</span>
-          <h2>{collectionCase.odoo_order_id}</h2>
-          <small>Partner ID {collectionCase.odoo_partner_id}</small>
-        </div>
         <StatusPill
           label={collectionCase.phase_label}
           tone={phaseTone(collectionCase.phase)}
@@ -137,6 +139,8 @@ function CaseCard({ collectionCase }: { collectionCase: CollectionCase }) {
       </header>
 
       <div className={styles.primaryData}>
+        <SummaryItem icon={<ReceiptIcon />} label="Orden Odoo">{collectionCase.odoo_order_id}</SummaryItem>
+        <SummaryItem icon={<UserIcon />} label="Partner ID">{collectionCase.odoo_partner_id}</SummaryItem>
         <SummaryItem icon={<DeviceIcon />} label="IMEI">{collectionCase.imei}</SummaryItem>
         <SummaryItem icon={<ReceiptIcon />} label="Facturas vencidas">{collectionCase.overdue_count}</SummaryItem>
         <SummaryItem icon={<CheckIcon />} label="Estado" tone="good">
@@ -222,11 +226,6 @@ export default async function CollectionCasesPage({
           <button type="submit">Buscar</button>
           <Link href="/panel/estado-cobranzas">Limpiar</Link>
         </form>
-
-        <div className={styles.resultsHeader}>
-          <div><span>REGISTROS</span><h2 id="results-heading">Resultados</h2></div>
-          <strong>{data.pagination.total} en total</strong>
-        </div>
 
         {data.error ? (
           <div className={styles.feedback} role="alert"><strong>No se pudieron cargar los estados</strong><p>{data.error}</p></div>
