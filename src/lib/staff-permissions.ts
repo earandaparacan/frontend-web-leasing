@@ -25,6 +25,7 @@ export const STAFF_PERMISSIONS = {
   pagopar: "users.view_pagopar_transactions",
   infonet: "users.view_infonet_transactions",
   odooPaymentEvents: "users.view_odoo_payment_events",
+  collectionCases: "users.view_collection_cases",
   imeiConflicts: "users.view_imei_conflicts",
   exportImeiConflicts: "users.export_imei_conflicts",
 } as const;
@@ -43,6 +44,7 @@ export function getDefaultStaffPath(user: StaffUser) {
     [STAFF_PERMISSIONS.pagopar, "/panel/pagopar"],
     [STAFF_PERMISSIONS.infonet, "/panel/infonet"],
     [STAFF_PERMISSIONS.odooPaymentEvents, "/panel/odoo-payment-events"],
+    [STAFF_PERMISSIONS.collectionCases, "/panel/estado-cobranzas"],
     [STAFF_PERMISSIONS.imeiConflicts, "/panel/imei-duplicados"],
   ] as const;
   return destinations.find(([permission]) => hasStaffPermission(user, permission))?.[1] ?? "/";

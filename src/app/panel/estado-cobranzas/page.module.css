@@ -1,0 +1,98 @@
+.page { padding-bottom: 70px; }
+
+.breadcrumb { display: flex; align-items: center; gap: 8px; margin-bottom: 40px; color: #a0a0a0; font-size: 13px; }
+.breadcrumb a { text-decoration: none; }
+.breadcrumb a:hover { color: var(--brand-orange); }
+.breadcrumb svg { width: 12px; height: 12px; }
+.breadcrumb span { color: #555; font-weight: 650; }
+
+.header { display: flex; align-items: flex-start; justify-content: space-between; gap: 30px; margin-bottom: 34px; }
+.header > div:first-child > span, .resultsHeader > div > span { color: var(--brand-orange); font-size: 13px; font-weight: 760; letter-spacing: .14em; }
+.header h1 { margin: 8px 0 10px; font-family: "Urbanist Variable", Urbanist, sans-serif; font-size: clamp(44px, 4.8cqi, 62px); font-weight: 630; letter-spacing: -.052em; line-height: 1; }
+.header p { max-width: 680px; margin: 0; color: #858585; font-size: 16px; line-height: 1.65; }
+.headerIcon { display: grid; flex: 0 0 62px; width: 62px; height: 62px; place-items: center; border-radius: 16px; color: var(--brand-orange); background: #fff0eb; }
+.headerIcon svg { width: 27px; height: 27px; }
+
+.dashboard { margin-bottom: 20px; padding: 20px 24px; border: 1px solid #e4e4e4; border-radius: 17px; background: rgba(255,255,255,.88); box-shadow: 0 14px 36px -34px rgba(0,0,0,.4); }
+.dashboard > header { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 16px; }
+.dashboard > header span { color: var(--brand-orange); font-size: 11px; font-weight: 760; letter-spacing: .14em; }
+.dashboard > header h2 { margin: 4px 0 0; font-family: "Urbanist Variable", Urbanist, sans-serif; font-size: 23px; letter-spacing: -.025em; }
+.dashboard > header > small { color: #8a8b91; font-size: 11px; }
+.metrics { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 10px; }
+.metricCard { display: flex; min-width: 0; min-height: 104px; align-items: center; gap: 12px; padding: 14px; border: 1px solid #e6e9ed; border-radius: 11px; background: #fff; }
+.metricIcon { display: grid; flex: 0 0 42px; width: 42px; height: 42px; place-items: center; border-radius: 11px; color: #344154; background: #f4f6f8; }
+.metricIcon svg { width: 20px; height: 20px; }
+.metricCard > div { display: grid; min-width: 0; }
+.metricCard > div > span { color: #7f8998; font-size: 10px; }
+.metricCard strong { margin: 1px 0; color: #172033; font-family: "Urbanist Variable", Urbanist, sans-serif; font-size: 25px; line-height: 1; }
+.metricCard small { color: #969ca6; font-size: 9px; line-height: 1.25; }
+.metricCard--good .metricIcon { color: #11954b; background: #e3f8ea; }
+.metricCard--warning .metricIcon { color: #b36a00; background: #fff3df; }
+.metricCard--bad .metricIcon { color: #df444d; background: #fff0f1; }
+.phaseSummary { display: flex; align-items: center; justify-content: space-between; gap: 22px; margin-top: 12px; padding: 11px 13px; border-radius: 10px; background: #f7f8fa; }
+.phaseSummary > span { flex: 0 0 auto; color: #778292; font-size: 10px; font-weight: 700; }
+.phaseSummary > div { display: grid; width: min(100%, 620px); grid-template-columns: repeat(5, minmax(0,1fr)); }
+.phaseSummary > div > span { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 0 10px; border-left: 1px solid #e1e4e8; }
+.phaseSummary small { color: #858e9b; font-size: 10px; }
+.phaseSummary strong { color: #263246; font-size: 12px; }
+
+.content { overflow: hidden; border: 1px solid #e4e4e4; border-radius: 17px; background: #fff; box-shadow: 0 14px 36px -34px rgba(0,0,0,.4); }
+.filters { display: grid; grid-template-columns: minmax(260px, 2fr) repeat(3, minmax(130px, 1fr)) auto auto; align-items: end; gap: 10px; padding: 20px 24px; background: #fafafa; }
+.filters label { display: grid; gap: 7px; min-width: 0; color: #6f7077; font-size: 12px; font-weight: 700; }
+.filters input, .filters select { width: 100%; height: 48px; padding: 0 12px; border: 1px solid #dedede; border-radius: 9px; outline: 0; color: #333; background: #fff; font-size: 14px; }
+.filters input:focus, .filters select:focus { border-color: var(--brand-orange); box-shadow: 0 0 0 3px rgba(255,94,43,.1); }
+.filters button { height: 48px; padding: 0 19px; border-radius: 9px; color: #fff; background: #171717; font-size: 14px; font-weight: 700; cursor: pointer; }
+.filters > a { align-self: center; margin-top: 19px; color: #777; font-size: 13px; text-underline-offset: 3px; }
+
+.resultsHeader { display: flex; min-height: 84px; align-items: center; justify-content: space-between; gap: 20px; padding: 18px 24px; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
+.resultsHeader h2 { margin: 5px 0 0; font-family: "Urbanist Variable", Urbanist, sans-serif; font-size: 24px; }
+.resultsHeader > strong { padding: 8px 11px; border-radius: 999px; color: #777; background: #f2f2f2; font-size: 12px; }
+.caseList { display: grid; gap: 14px; padding: 20px 24px 24px; background: #f9f9f9; }
+.caseCard { overflow: hidden; border: 1px solid #e6e6e6; border-radius: 13px; background: #fff; }
+.caseCard > header { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 18px 20px; }
+.caseCard > header span:first-child { color: #999; font-size: 10px; font-weight: 750; letter-spacing: .11em; }
+.caseCard h2 { display: inline; margin: 0 9px 0 0; font-size: 20px; }
+.caseCard header small { color: #81828a; font-size: 12px; }
+.primaryData { display: grid; grid-template-columns: 1.5fr repeat(3, 1fr); gap: 10px; padding: 0 20px 18px; }
+.summaryItem { display: flex; min-width: 0; min-height: 70px; align-items: center; gap: 12px; padding: 11px 12px; border: 1px solid #e5e8ed; border-radius: 9px; background: #fff; }
+.summaryIcon { display: grid; flex: 0 0 40px; width: 40px; height: 40px; place-items: center; border-radius: 10px; color: #28364a; background: #f5f7f9; }
+.summaryIcon svg { width: 19px; height: 19px; }
+.summaryIcon--good { color: #11954b; background: #e3f8ea; }
+.summaryItem > div { display: grid; min-width: 0; gap: 4px; }
+.summaryItem span:not(.summaryIcon) { color: #8490a2; font-size: 10px; }
+.summaryItem strong { overflow-wrap: anywhere; color: #172033; font-size: 13px; }
+.summaryValue--good { width: fit-content; padding: 5px 9px; border-radius: 999px; color: #138943 !important; background: #ddf7e6; }
+.caseActions { display: flex; justify-content: flex-end; padding: 13px 20px; border-top: 1px solid #eee; }
+.caseActions a { padding: 9px 12px; border-radius: 8px; color: #fff; background: #171717; font-size: 12px; font-weight: 700; text-decoration: none; }
+.caseActions a:hover { background: #303030; }
+.feedback { display: grid; min-height: 270px; place-items: center; align-content: center; padding: 40px 20px; text-align: center; }
+.feedback svg { width: 28px; margin-bottom: 14px; color: #aaa; }
+.feedback p { max-width: 440px; margin: 8px 0 0; color: #85868e; font-size: 13px; }
+.pagination { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 17px 24px; border-top: 1px solid #eee; color: #70717a; font-size: 13px; }
+.pagination div { display: flex; gap: 8px; }
+.pagination a { padding: 8px 11px; border: 1px solid #e1e1e1; border-radius: 8px; text-decoration: none; }
+
+@container workspace (max-width: 1050px) {
+  .metrics { grid-template-columns: repeat(3, minmax(0,1fr)); }
+  .filters { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .searchField { grid-column: 1 / -1; }
+  .primaryData { grid-template-columns: repeat(2, 1fr); }
+}
+
+@container workspace (max-width: 620px) {
+  .header { display: grid; }
+  .headerIcon { grid-row: 1; }
+  .dashboard { padding: 16px; }
+  .dashboard > header, .phaseSummary { align-items: flex-start; flex-direction: column; }
+  .dashboard > header > small { display: none; }
+  .metrics { grid-template-columns: 1fr; }
+  .metricCard { min-height: 84px; }
+  .phaseSummary > div { width: 100%; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
+  .phaseSummary > div > span { justify-content: space-between; padding: 7px 9px; border: 0; border-radius: 7px; background: #fff; }
+  .filters { grid-template-columns: 1fr; }
+  .searchField { grid-column: auto; }
+  .filters > a { margin-top: 3px; }
+  .caseCard > header { align-items: flex-start; flex-direction: column; }
+  .primaryData { grid-template-columns: 1fr; }
+  .caseActions a { width: 100%; text-align: center; }
+}
