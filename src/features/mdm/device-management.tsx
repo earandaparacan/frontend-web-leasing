@@ -921,7 +921,7 @@ export function DeviceManagement({ permissions }: { permissions: DeviceManagemen
               <span className={styles.step}>1</span>
               <div>
                 <h2>Elegí los dispositivos</h2>
-                <p>Ingresá un IMEI o Device ID por línea y verificá cuáles existen en Headwind.</p>
+                <p>Ingresá un IMEI o Device ID por línea y verificá cuáles existen en el MDM.</p>
               </div>
             </div>
             <div className={styles.queryTools}>
@@ -978,7 +978,7 @@ export function DeviceManagement({ permissions }: { permissions: DeviceManagemen
           <div className={styles.resultsHeading}>
             <div className={styles.resultsHeadingText}>
               <h2>Dispositivos verificados</h2>
-              <p>Los no encontrados quedarán registrados en la ejecución, sin enviarse a Headwind.</p>
+              <p>Los no encontrados quedarán registrados en la ejecución, sin enviarse al MDM.</p>
             </div>
             <div className={styles.resultTools}>
               <label className={styles.searchField}>

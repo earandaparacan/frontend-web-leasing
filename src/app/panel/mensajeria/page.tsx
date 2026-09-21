@@ -4,7 +4,7 @@ import { hasStaffPermission, requireStaffPermission, STAFF_PERMISSIONS } from "@
 
 export const metadata: Metadata = {
   title: "Mensajería MDM | Teklease",
-  description: "Envío seguro de mensajes a dispositivos administrados por Headwind MDM.",
+  description: "Envío seguro de mensajes a dispositivos administrados por el MDM.",
 };
 
 export default async function MessagingPage() {

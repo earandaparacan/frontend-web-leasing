@@ -550,8 +550,8 @@ export function MdmMessaging({ permissions }: { permissions: MdmMessagingPermiss
         void loadJobHistory();
         if (job.status === "SUCCEEDED") {
           continuePolling = false;
-          setNotice({ tone: "success", text: "Headwind aceptó todos los mensajes del envío." });
-          addLog(`Envío ${job.id} aceptado por Headwind.`, "success");
+          setNotice({ tone: "success", text: "El MDM aceptó todos los mensajes del envío." });
+          addLog(`Envío ${job.id} aceptado por el MDM.`, "success");
         } else if (isTerminalMessageJob(job)) {
           continuePolling = false;
           const errorMessage = `El envío terminó con ${job.failed} dispositivo${job.failed === 1 ? "" : "s"} fallido${job.failed === 1 ? "" : "s"}.`;
@@ -657,7 +657,7 @@ export function MdmMessaging({ permissions }: { permissions: MdmMessagingPermiss
               throw new Error(responseMessage(data));
             }
             if (!Array.isArray(data.results) || !data.results.every(isDevice)) {
-              throw new Error("Headwind MDM devolvió datos incompletos.");
+              throw new Error("El MDM devolvió datos incompletos.");
             }
             return data.results;
           }),
@@ -734,7 +734,7 @@ export function MdmMessaging({ permissions }: { permissions: MdmMessagingPermiss
       }
       const availableGroups = data.groups.filter(isDeviceGroup);
       if (availableGroups.length !== data.groups.length) {
-        throw new Error("Headwind MDM devolvió grupos incompletos.");
+        throw new Error("El MDM devolvió grupos incompletos.");
       }
       setGroups(availableGroups);
       if (availableGroups.length === 0) {
@@ -910,9 +910,9 @@ export function MdmMessaging({ permissions }: { permissions: MdmMessagingPermiss
       setSelectedTemplate("");
       setNotice({
         tone: "success",
-        text: "Mensaje aceptado por Headwind.",
+        text: "Mensaje aceptado por el MDM.",
       });
-      addLog(`Mensaje aceptado por Headwind para ${targetLabel}.`, "success");
+      addLog(`Mensaje aceptado por el MDM para ${targetLabel}.`, "success");
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "No se pudo enviar el mensaje.";
       setNotice({
@@ -1151,7 +1151,7 @@ export function MdmMessaging({ permissions }: { permissions: MdmMessagingPermiss
                 <ShieldIcon />
                 <p>
                   <strong>Envío masivo nativo</strong>
-                  <span>Headwind distribuirá el mensaje a toda la flota en una sola operación, sin cargar los 3.000 IDs.</span>
+                  <span>El MDM distribuirá el mensaje a toda la flota en una sola operación, sin cargar los 3.000 IDs.</span>
                 </p>
               </div>
             ) : (
@@ -1177,7 +1177,7 @@ export function MdmMessaging({ permissions }: { permissions: MdmMessagingPermiss
                   </select>
                 </label>
                 <small>
-                  Headwind enviará el aviso a todos los dispositivos pertenecientes al grupo.
+                  El MDM enviará el aviso a todos los dispositivos pertenecientes al grupo.
                 </small>
               </div>
             )}
@@ -1190,7 +1190,7 @@ export function MdmMessaging({ permissions }: { permissions: MdmMessagingPermiss
               <div className={styles.resultsHeading}>
                 <div>
                   <h2 id="verified-devices-heading">Dispositivos verificados</h2>
-                  <p>Los no encontrados quedarán registrados en la ejecución, sin enviarse a Headwind.</p>
+                  <p>Los no encontrados quedarán registrados en la ejecución, sin enviarse al MDM.</p>
                 </div>
                 <div className={styles.resultTools}>
                   <label className={styles.searchField}>
@@ -1421,7 +1421,7 @@ export function MdmMessaging({ permissions }: { permissions: MdmMessagingPermiss
                       {isRetryingJob ? "Reintentando…" : "Reintentar fallidos"}
                     </button>
                   ) : null}
-                  <p>“Aceptado” confirma la recepción de Headwind; la entrega final depende de la conexión MQTT.</p>
+                  <p>“Aceptado” confirma la recepción de el MDM; la entrega final depende de la conexión MQTT.</p>
                 </section>
               ) : null}
 
