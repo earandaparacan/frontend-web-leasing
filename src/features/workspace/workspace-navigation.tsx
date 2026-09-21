@@ -24,15 +24,15 @@ import styles from "./workspace-navigation.module.css";
 
 const navigation = [
   { href: "/panel", label: "Dashboard", icon: DashboardIcon, exact: true, permission: STAFF_PERMISSIONS.dashboard },
+  { href: "/panel/estado-cobranzas", label: "Estado de cobranzas", icon: ReceiptIcon, exact: false, permission: STAFF_PERMISSIONS.collectionCases },
   { href: "/panel/dispositivos", label: "Lock / Unlock", icon: DeviceIcon, exact: false, permission: STAFF_PERMISSIONS.devices },
   { href: "/panel/mensajeria", label: "Mensajería MDM", icon: MessageIcon, exact: false, permission: STAFF_PERMISSIONS.messages },
-  { href: "/panel/desafios-otp", label: "Desafíos OTP", icon: KeyIcon, exact: false, permission: STAFF_PERMISSIONS.otpChallenges },
-  { href: "/panel/usuarios", label: "Usuarios", icon: UsersIcon, exact: false, permission: STAFF_PERMISSIONS.users },
   { href: "/panel/pagopar", label: "Pagopar transactions", icon: ReceiptIcon, exact: false, permission: STAFF_PERMISSIONS.pagopar },
   { href: "/panel/infonet", label: "Infonet transactions", icon: ReceiptIcon, exact: false, permission: STAFF_PERMISSIONS.infonet },
   { href: "/panel/odoo-payment-events", label: "Odoo payment events", icon: ReceiptIcon, exact: false, permission: STAFF_PERMISSIONS.odooPaymentEvents },
-  { href: "/panel/estado-cobranzas", label: "Estado de cobranzas", icon: ReceiptIcon, exact: false, permission: STAFF_PERMISSIONS.collectionCases },
   { href: "/panel/imei-duplicados", label: "IMEI duplicados", icon: ShieldIcon, exact: false, permission: STAFF_PERMISSIONS.imeiConflicts },
+  { href: "/panel/desafios-otp", label: "Desafíos OTP", icon: KeyIcon, exact: false, permission: STAFF_PERMISSIONS.otpChallenges },
+  { href: "/panel/usuarios", label: "Usuarios", icon: UsersIcon, exact: false, permission: STAFF_PERMISSIONS.users },
 ] as const;
 
 export function WorkspaceNavigation({ user }: { user: StaffUser }) {
