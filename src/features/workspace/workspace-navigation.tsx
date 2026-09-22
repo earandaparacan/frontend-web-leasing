@@ -35,9 +35,40 @@ const navigation = [
   { href: "/panel/usuarios", label: "Usuarios", icon: UsersIcon, exact: false, permission: STAFF_PERMISSIONS.users },
 ] as const;
 
+const MOBILE_VISIBLE_ITEMS = 5;
+
 export function WorkspaceNavigation({ user }: { user: StaffUser }) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const [isNavigationExpanded, setIsNavigationExpanded] = useState(false);
+  const permittedNavigation = navigation.filter((item) =>
+    hasStaffPermission(user, item.permission),
+  );
+  const primaryNavigation = permittedNavigation.slice(0, MOBILE_VISIBLE_ITEMS);
+  const additionalNavigation = permittedNavigation.slice(MOBILE_VISIBLE_ITEMS);
+
+  function handleClose() {
+    setIsOpen(false);
+    setIsNavigationExpanded(false);
+  }
+
+  function renderNavigationItem(item: (typeof navigation)[number]) {
+    const Icon = item.icon;
+    const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
+
+    return (
+      <Link
+        className={active ? styles.active : undefined}
+        href={item.href}
+        key={item.href}
+        aria-current={active ? "page" : undefined}
+        onClick={handleClose}
+      >
+        <Icon />
+        <span>{item.label}</span>
+      </Link>
+    );
+  }
 
   return (
     <>
@@ -50,7 +81,14 @@ export function WorkspaceNavigation({ user }: { user: StaffUser }) {
           type="button"
           aria-label={isOpen ? "Cerrar menú" : "Abrir menú"}
           aria-expanded={isOpen}
-          onClick={() => setIsOpen((current) => !current)}
+          onClick={() => {
+            if (isOpen) {
+              handleClose();
+              return;
+            }
+
+            setIsOpen(true);
+          }}
         >
           {isOpen ? <CloseIcon /> : <MenuIcon />}
         </button>
@@ -61,7 +99,7 @@ export function WorkspaceNavigation({ user }: { user: StaffUser }) {
           className={styles.backdrop}
           type="button"
           aria-label="Cerrar menú"
-          onClick={() => setIsOpen(false)}
+          onClick={handleClose}
         />
       ) : null}
 
@@ -75,22 +113,29 @@ export function WorkspaceNavigation({ user }: { user: StaffUser }) {
 
         <nav className={styles.navigation} aria-label="Navegación principal">
           <span className={styles.navLabel}>MENÚ PRINCIPAL</span>
-          {navigation.filter((item) => hasStaffPermission(user, item.permission)).map((item) => {
-            const Icon = item.icon;
-            const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
-            return (
-              <Link
-                className={active ? styles.active : undefined}
-                href={item.href}
-                key={item.href}
-                aria-current={active ? "page" : undefined}
-                onClick={() => setIsOpen(false)}
+          {primaryNavigation.map(renderNavigationItem)}
+          {additionalNavigation.length > 0 ? (
+            <>
+              <div
+                className={`${styles.additionalNavigation} ${
+                  isNavigationExpanded ? styles.additionalNavigationOpen : ""
+                }`}
+                id="additional-navigation"
               >
-                <Icon />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
+                {additionalNavigation.map(renderNavigationItem)}
+              </div>
+              <button
+                className={styles.showMoreButton}
+                type="button"
+                aria-controls="additional-navigation"
+                aria-expanded={isNavigationExpanded}
+                onClick={() => setIsNavigationExpanded((current) => !current)}
+              >
+                <span>{isNavigationExpanded ? "Ver menos" : "Ver más"}</span>
+                <span aria-hidden="true">{isNavigationExpanded ? "−" : "+"}</span>
+              </button>
+            </>
+          ) : null}
         </nav>
 
         <div className={styles.sidebarFooter}>
@@ -107,7 +152,7 @@ export function WorkspaceNavigation({ user }: { user: StaffUser }) {
             title={user.username}
             aria-label="Abrir mi cuenta"
             aria-current={pathname === "/panel/mi-cuenta" ? "page" : undefined}
-            onClick={() => setIsOpen(false)}
+            onClick={handleClose}
           >
             <span className={styles.avatar}>{user.username.slice(0, 1).toUpperCase()}</span>
             <div>

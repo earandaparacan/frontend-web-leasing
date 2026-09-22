@@ -9,7 +9,7 @@
   color: #fff;
   background: #111;
   box-shadow: 14px 0 50px -42px rgba(0, 0, 0, 0.85);
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .brand {
@@ -29,8 +29,20 @@
 
 .navigation {
   display: grid;
+  min-height: 0;
   gap: 7px;
   padding-top: 30px;
+  overflow-y: auto;
+  scrollbar-color: #383838 transparent;
+  scrollbar-width: thin;
+}
+
+.additionalNavigation {
+  display: contents;
+}
+
+.showMoreButton {
+  display: none;
 }
 
 .navLabel {
@@ -91,8 +103,11 @@
 
 .sidebarFooter {
   display: grid;
+  flex: 0 0 auto;
   gap: 14px;
   margin-top: auto;
+  padding-top: 14px;
+  background: #111;
 }
 
 .securityNote {
@@ -220,8 +235,43 @@
 
   .sidebar {
     width: min(286px, calc(100vw - 44px));
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
     transform: translateX(-105%);
     transition: transform 190ms ease;
+  }
+
+  .additionalNavigation {
+    display: none;
+  }
+
+  .additionalNavigationOpen {
+    display: contents;
+  }
+
+  .showMoreButton {
+    display: flex;
+    min-height: 40px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 13px;
+    border: 1px solid #292929;
+    border-radius: 10px;
+    color: #aaa;
+    background: #181818;
+    font: inherit;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .showMoreButton:hover {
+    color: #fff;
+    background: #202020;
+  }
+
+  .showMoreButton:focus-visible {
+    outline: 2px solid var(--brand-orange);
+    outline-offset: 2px;
   }
 
   .sidebarOpen {
