@@ -49,6 +49,12 @@ export type CollectionEvent = {
     status: string;
     started_at: string;
   } | null;
+  created_by: {
+    id: string;
+    username: string;
+    display_name: string;
+    source: "job" | "policy";
+  } | null;
   message: string;
   message_job_id: string | null;
   action_job_id: string | null;
@@ -80,6 +86,16 @@ function isObject(value: unknown): value is Record<string, unknown> {
 
 function isNullableString(value: unknown): value is string | null {
   return value === null || typeof value === "string";
+}
+
+function isEventCreator(value: unknown) {
+  return value === null || (
+    isObject(value) &&
+    ["id", "username", "display_name"].every(
+      (field) => typeof value[field] === "string",
+    ) &&
+    (value.source === "job" || value.source === "policy")
+  );
 }
 
 function isCollectionCase(value: unknown): value is CollectionCase {
@@ -132,6 +148,7 @@ function isCollectionEvent(value: unknown): value is CollectionEvent {
     ) &&
     isNullableString(value.message_job_id) &&
     isNullableString(value.action_job_id) &&
+    isEventCreator(value.created_by) &&
     validExecution
   );
 }

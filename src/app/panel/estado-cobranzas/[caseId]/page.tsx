@@ -164,6 +164,12 @@ export default async function CollectionCaseDetailPage({
                     {event.message ? <p className={styles.eventMessage}>{event.message}</p> : null}
                     <div className={styles.eventMetadata}>
                       {event.execution ? <span>Ejecución #{event.execution.id} · {event.execution.status}</span> : <span>Sin ejecución asociada</span>}
+                      {event.created_by ? (
+                        <span>
+                          Ejecutado por: {event.created_by.username}
+                          {event.created_by.source === "policy" ? " · Simulación" : ""}
+                        </span>
+                      ) : null}
                       {event.message_job_id ? <span>Message job: {event.message_job_id}</span> : null}
                       {event.action_job_id ? <span>Action job: {event.action_job_id}</span> : null}
                     </div>
