@@ -158,12 +158,20 @@ export default async function CollectionCaseDetailPage({
                   <div className={styles.eventContent}>
                     <div className={styles.eventHeading}>
                       <div><strong>{event.event_type_label}</strong><small>{formatStaffDate(event.created_at)}</small></div>
-                      {event.execution ? <span>{event.execution.operation_label}</span> : null}
+                      <div className={styles.eventBadges}>
+                        <span>{event.source_label}</span>
+                        {event.execution ? <span>{event.execution.operation_label}</span> : null}
+                      </div>
                     </div>
                     <p className={styles.eventKey}>{event.event_key}</p>
                     {event.message ? <p className={styles.eventMessage}>{event.message}</p> : null}
                     <div className={styles.eventMetadata}>
-                      {event.execution ? <span>Ejecución #{event.execution.id} · {event.execution.status}</span> : <span>Sin ejecución asociada</span>}
+                      {event.execution ? <span>Ejecución #{event.execution.id} · {event.execution.status}</span> : null}
+                      {event.job ? (
+                        <span>
+                          Resultado: {event.job.item_status_label ?? event.job.status_label}
+                        </span>
+                      ) : null}
                       {event.created_by ? (
                         <span>
                           Ejecutado por: {event.created_by.username}

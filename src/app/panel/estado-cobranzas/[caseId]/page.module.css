@@ -61,7 +61,9 @@
 .eventHeading > div { display: grid; gap: 3px; }
 .eventHeading strong { color: #202b3e; font-size: 13px; }
 .eventHeading small { color: #8490a2; font-size: 10px; }
-.eventHeading > span { padding: 6px 9px; border-radius: 999px; color: #8e671f; background: #fff0cf; font-size: 9px; font-weight: 750; }
+.eventBadges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; }
+.eventBadges span { padding: 6px 9px; border-radius: 999px; color: #8e671f; background: #fff0cf; font-size: 9px; font-weight: 750; }
+.eventBadges span:first-child { color: #4d5d74; background: #edf1f5; }
 .eventKey { margin: 7px 0 0; overflow-wrap: anywhere; color: #58657a; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 10px; }
 .eventMessage { margin: 6px 0 0; color: #5a6679; font-size: 11px; line-height: 1.5; }
 .eventMetadata { display: flex; flex-wrap: wrap; gap: 5px 14px; margin-top: 7px; color: #929baa; font-size: 9px; }
@@ -87,5 +89,5 @@
   .event { gap: 10px; padding: 12px 10px; }
   .eventIcon { flex-basis: 36px; width: 36px; height: 36px; }
   .eventHeading { display: grid; }
-  .eventHeading > span { width: fit-content; }
+  .eventBadges { justify-content: flex-start; }
 }

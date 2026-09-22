@@ -42,6 +42,8 @@ export type CollectionEvent = {
   event_key: string;
   event_type: string;
   event_type_label: string;
+  source: "POLICY" | "MANUAL";
+  source_label: string;
   execution: {
     id: number;
     operation: string;
@@ -58,6 +60,12 @@ export type CollectionEvent = {
   message: string;
   message_job_id: string | null;
   action_job_id: string | null;
+  job: {
+    status: string;
+    status_label: string;
+    item_status: string | null;
+    item_status_label: string | null;
+  } | null;
   created_at: string;
 };
 
@@ -141,14 +149,24 @@ function isCollectionEvent(value: unknown): value is CollectionEvent {
       (field) => typeof execution[field] === "string",
     )
   );
+  const job = value.job;
+  const validJob = job === null || (
+    isObject(job) &&
+    typeof job.status === "string" &&
+    typeof job.status_label === "string" &&
+    isNullableString(job.item_status) &&
+    isNullableString(job.item_status_label)
+  );
   return (
     typeof value.id === "number" &&
-    ["event_key", "event_type", "event_type_label", "message", "created_at"].every(
+    ["event_key", "event_type", "event_type_label", "source_label", "message", "created_at"].every(
       (field) => typeof value[field] === "string",
     ) &&
+    (value.source === "POLICY" || value.source === "MANUAL") &&
     isNullableString(value.message_job_id) &&
     isNullableString(value.action_job_id) &&
     isEventCreator(value.created_by) &&
+    validJob &&
     validExecution
   );
 }
