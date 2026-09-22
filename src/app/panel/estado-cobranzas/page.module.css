@@ -32,13 +32,12 @@
 .metricCard--bad .metricIcon { color: #df444d; background: #fff0f1; }
 .phaseSummary { margin-top: 18px; }
 .phaseSummary h3 { margin: 0 0 13px; color: #657083; font-size: 12px; font-weight: 700; }
-.phaseValues { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); margin-bottom: 9px; }
+.phaseValues { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); margin-bottom: 9px; }
 .phaseValues > span { display: grid; justify-items: center; gap: 3px; }
 .phaseValues small { color: #7f8998; font-size: 10px; }
 .phaseValues strong { color: #172033; font-family: "Urbanist Variable", Urbanist, sans-serif; font-size: 17px; line-height: 1; }
-.phaseBar { display: grid; overflow: hidden; height: 12px; grid-template-columns: repeat(5, minmax(0,1fr)); border-radius: 999px; background: #eff1f4; }
+.phaseBar { display: grid; overflow: hidden; height: 12px; grid-template-columns: repeat(4, minmax(0,1fr)); border-radius: 999px; background: #eff1f4; }
 .phaseBar span + span { border-left: 2px solid #fff; }
-.phase--0 { background: #e9edf1; }
 .phase--1 { background: #a8c4fa; }
 .phase--2 { background: #ffd28b; }
 .phase--3 { background: #ff9d6f; }

@@ -68,7 +68,6 @@ function SummaryItem({
 }
 
 const PHASES = [
-  { key: "0", label: "Al día" },
   { key: "1", label: "Fase 1" },
   { key: "2", label: "Fase 2" },
   { key: "3", label: "Fase 3" },
