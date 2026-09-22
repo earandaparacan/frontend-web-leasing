@@ -1155,3 +1155,39 @@
     grid-template-columns: 1fr;
   }
 }
+/* Dark theme */
+:global(html[data-theme="dark"]) :is(.queryCard, .results, .actionPanel, .activity, .historyPreview, .historyDrawer, .historyDrawerDetail) {
+  border-color: var(--border);
+  background: var(--surface);
+  box-shadow: 0 14px 36px -34px var(--shadow);
+}
+
+:global(html[data-theme="dark"]) .page :is(h1, h2, h3, strong, input, select, textarea) { color: var(--ink); }
+:global(html[data-theme="dark"]) .page :is(p, span, small, td, th, label, .breadcrumb, .description) { color: var(--muted); }
+:global(html[data-theme="dark"]) :is(.queryHeading, .resultsHeading, .queryFooter, .activityHeader, .historyPreviewHeading, .historyDrawerHeader, .historyDrawerItem, .detailActions) { border-color: var(--border); }
+:global(html[data-theme="dark"]) :is(.searchField, .actionFields input, .actionFields select, .clearFormButton, .historyRefreshButton, .saveTemplate) { border-color: var(--border); color: var(--ink); background: var(--surface-subtle); }
+:global(html[data-theme="dark"]) .queryCard textarea {
+  border-color: var(--border);
+  color: var(--ink);
+  background: #26272c;
+}
+:global(html[data-theme="dark"]) .queryCard textarea:focus {
+  background: #2b2c32;
+}
+:global(html[data-theme="dark"]) .queryCard textarea::placeholder {
+  color: #8f9098;
+}
+:global(html[data-theme="dark"]) .queryFooter button:disabled {
+  color: var(--ink-faint);
+  background: var(--surface-elevated);
+}
+:global(html[data-theme="dark"]) :is(.securityNote, .historyPreviewHeading > button, .historyPreviewLink) {
+  border-color: var(--border);
+  background: var(--surface-elevated);
+}
+:global(html[data-theme="dark"]) .historyPreviewHeading > button { color: #b8aedb; }
+:global(html[data-theme="dark"]) .historyPreviewLink { color: #afa4ff; }
+:global(html[data-theme="dark"]) .tableWrap :is(th, td, tr) { border-color: var(--border); background-color: var(--surface); }
+:global(html[data-theme="dark"]) :is(.selectedRow, .missingRow, .tableWrap tbody tr:hover) { background: var(--surface-subtle); }
+:global(html[data-theme="dark"]) :is(.selectionCheckbox > span, .detailMessage, .detailDevices > div, .jobStats > div, .logEntry) { border-color: var(--border); background: var(--surface-subtle); }
+:global(html[data-theme="dark"]) .historyDrawerBackdrop { background: rgba(0, 0, 0, 0.72); }

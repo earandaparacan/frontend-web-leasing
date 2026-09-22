@@ -142,3 +142,8 @@
     font-size: 14px;
   }
 }
+/* Dark theme */
+:global(html[data-theme="dark"]) .content { border-color: var(--border); background: var(--surface); box-shadow: 0 18px 50px var(--shadow); }
+:global(html[data-theme="dark"]) .page :is(h1, h2, h3, strong) { color: var(--ink); }
+:global(html[data-theme="dark"]) .page :is(p, li, .updated) { color: var(--muted); }
+:global(html[data-theme="dark"]) .contact { color: var(--ink); background: var(--surface-subtle); }

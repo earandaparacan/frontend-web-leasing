@@ -33,3 +33,10 @@
     grid-column: auto;
   }
 }
+/* Dark theme */
+:global(html[data-theme="dark"]) .page :is(.card, .filters, .tableWrap, .pagination) { border-color: var(--border); background: var(--surface); color: var(--ink); }
+:global(html[data-theme="dark"]) .page :is(h1, h2, strong, input, select) { color: var(--ink); }
+:global(html[data-theme="dark"]) .page :is(p, small, td, th, .breadcrumb) { color: var(--muted); }
+:global(html[data-theme="dark"]) .page :is(input, select, .search, .clear, .checkbox input) { border-color: var(--border); background: var(--surface-subtle); }
+:global(html[data-theme="dark"]) .page .tableWrap :is(th, tr, td) { border-color: var(--border); background-color: var(--surface); }
+:global(html[data-theme="dark"]) .page .tableWrap tbody tr:hover { background: var(--surface-subtle); }

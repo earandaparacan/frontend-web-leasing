@@ -91,3 +91,10 @@
   .eventHeading { display: grid; }
   .eventBadges { justify-content: flex-start; }
 }
+/* Dark theme */
+:global(html[data-theme="dark"]) :is(.summary, .events, .dataItem, .event) { border-color: var(--border); background: var(--surface); }
+:global(html[data-theme="dark"]) .page :is(h1, h2, h3, strong, dd) { color: var(--ink); }
+:global(html[data-theme="dark"]) .page :is(p, small, span, dt, .breadcrumb, .eventKey, .eventMessage, .eventMetadata) { color: var(--muted); }
+:global(html[data-theme="dark"]) :is(.dataIcon, .eventIcon, .events .sectionHeading > strong) { color: var(--ink-soft); background: var(--surface-subtle); }
+:global(html[data-theme="dark"]) :is(.sectionHeading, .event, .eventList::before) { border-color: var(--border); }
+:global(html[data-theme="dark"]) .timelineDot { border-color: var(--surface); }

@@ -226,3 +226,33 @@
     display: grid;
   }
 }
+/* Dark theme */
+:global(html[data-theme="dark"]) :is(.dataCard, .filters, .emptyState) {
+  border-color: var(--border);
+  background: var(--surface);
+  box-shadow: 0 14px 36px -34px var(--shadow);
+}
+
+:global(html[data-theme="dark"]) :is(.header, .cardHeader, .tableWrap) :is(h1, h2, strong) {
+  color: var(--ink);
+}
+
+:global(html[data-theme="dark"]) :is(.breadcrumb, .header, .tableWrap, .pagination) :is(span, small, td, th) {
+  color: var(--muted);
+}
+
+:global(html[data-theme="dark"]) .filters :is(label, select, input) {
+  border-color: var(--border);
+  color: var(--ink);
+  background: var(--surface-subtle);
+}
+
+:global(html[data-theme="dark"]) .tableWrap :is(th, tr, td),
+:global(html[data-theme="dark"]) .pagination {
+  border-color: var(--border);
+  background: var(--surface);
+}
+
+:global(html[data-theme="dark"]) .tableWrap tbody tr:hover {
+  background: var(--surface-subtle);
+}

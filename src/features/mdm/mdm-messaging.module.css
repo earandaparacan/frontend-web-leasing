@@ -761,3 +761,23 @@
     grid-template-columns: 1fr;
   }
 }
+/* Dark theme */
+:global(html[data-theme="dark"]) :is(.card, .results, .activity, .historyPreview, .historyDrawer, .historyDrawerDetail, .messageCard) {
+  border-color: var(--border);
+  background: var(--surface);
+  box-shadow: 0 14px 36px -34px var(--shadow);
+}
+
+:global(html[data-theme="dark"]) .page :is(h1, h2, h3, strong, input, select, textarea) { color: var(--ink); }
+:global(html[data-theme="dark"]) .page :is(p, span, small, td, th, label, .breadcrumb) { color: var(--muted); }
+:global(html[data-theme="dark"]) :is(.cardHeader, .resultsHeading, .activityHeader, .historyPreviewHeading, .historyDrawerHeader, .historyDrawerItem, .selectionSummary) { border-color: var(--border); }
+:global(html[data-theme="dark"]) :is(.deviceSearch label, .searchField, .groupTarget select, .branchField select, .templateControls select, .messageField textarea, .clearFormButton, .selectionSummary button, .historyDrawerRefresh, .downloadSummaryButton) {
+  border-color: var(--border);
+  color: var(--ink);
+  background: var(--surface-subtle);
+}
+:global(html[data-theme="dark"]) .tableWrap :is(th, td, tr) { border-color: var(--border); background-color: var(--surface); }
+:global(html[data-theme="dark"]) :is(.selectedRow, .missingRow, .tableWrap tbody tr:hover) { background: var(--surface-subtle); }
+:global(html[data-theme="dark"]) :is(.selectionCheckbox > span, .detailMessage, .detailDevices > div, .jobProgress dl div, .logEntry) { border-color: var(--border); background: var(--surface-subtle); }
+:global(html[data-theme="dark"]) :is(.broadcastNotice, .jobProgress) { border-color: color-mix(in srgb, #735ca8 45%, var(--border)); background: color-mix(in srgb, #735ca8 12%, var(--surface)); }
+:global(html[data-theme="dark"]) .detailDrawerBackdrop { background: rgba(0, 0, 0, 0.72); }

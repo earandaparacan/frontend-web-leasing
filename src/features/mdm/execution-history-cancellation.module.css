@@ -13,3 +13,4 @@
     grid-template-columns: 1fr;
   }
 }
+:global(html[data-theme="dark"]) .detail { border-color: var(--border); color: var(--muted); background: var(--surface-subtle); }

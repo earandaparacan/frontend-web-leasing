@@ -158,3 +158,13 @@
     border-radius: 14px;
   }
 }
+/* Dark theme */
+:global(html[data-theme="dark"]) :is(.profileCard, .passwordCard) {
+  border-color: var(--border);
+  background: var(--surface);
+  box-shadow: 0 16px 36px var(--shadow);
+}
+
+:global(html[data-theme="dark"]) :is(.header, .cardHeader, .profileCard, .passwordCard) :is(h1, h2, strong, dt, dd) { color: var(--ink); }
+:global(html[data-theme="dark"]) :is(.header, .profileCard, .passwordCard) :is(p, span, small) { color: var(--muted); }
+:global(html[data-theme="dark"]) .cardHeader { border-color: var(--border); }

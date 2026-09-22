@@ -10,6 +10,30 @@
   --border: #e1e1e1;
   --error: #b30411;
   --success: #68a56d;
+  --surface-subtle: #fafafa;
+  --surface-elevated: #ffffff;
+  --ink-soft: #555555;
+  --ink-faint: #999999;
+  --overlay-surface: rgba(255, 255, 255, 0.82);
+  --shadow: rgba(0, 0, 0, 0.12);
+}
+
+:root[data-theme="dark"] {
+  --brand-orange: #ff7043;
+  --brand-orange-hover: #ff855f;
+  --ink: #f2f2f3;
+  --muted: #a5a5ad;
+  --canvas: #0e0f11;
+  --surface: #18191d;
+  --surface-subtle: #202126;
+  --surface-elevated: #24252a;
+  --border: #34353b;
+  --error: #ff7b82;
+  --success: #83bd88;
+  --ink-soft: #c7c7cc;
+  --ink-faint: #888991;
+  --overlay-surface: rgba(24, 25, 29, 0.88);
+  --shadow: rgba(0, 0, 0, 0.42);
 }
 
 * {
@@ -26,6 +50,45 @@ body {
   background: var(--canvas);
   font-family: "Inter Variable", Inter, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
+  transition: color 180ms ease, background-color 180ms ease;
+}
+
+.theme-toggle {
+  position: fixed;
+  z-index: 45;
+  right: 82px;
+  bottom: 24px;
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--ink);
+  background: var(--surface-elevated);
+  box-shadow: 0 12px 26px -14px var(--shadow);
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.theme-toggle:hover {
+  transform: translateY(-2px);
+  border-color: var(--brand-orange);
+  background: var(--surface-subtle);
+}
+
+.theme-toggle:active {
+  transform: translateY(0);
+}
+
+.theme-toggle svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
 }
 
 button,
@@ -130,8 +193,8 @@ a {
   justify-content: space-between;
   gap: 24px;
   padding: 16px max(32px, calc((100vw - 1480px) / 2));
-  border-bottom: 1px solid #e5e5e5;
-  background: rgba(255, 255, 255, 0.82);
+  border-bottom: 1px solid var(--border);
+  background: var(--overlay-surface);
   backdrop-filter: blur(18px);
 }
 
@@ -149,7 +212,7 @@ a {
 .workspace-header__divider {
   width: 1px;
   height: 28px;
-  background: #dedede;
+  background: var(--border);
 }
 
 .workspace-header__identity > div:last-child,
@@ -167,7 +230,7 @@ a {
 }
 
 .workspace-header__identity strong {
-  color: #555;
+  color: var(--ink-soft);
   font-size: 11px;
 }
 
@@ -186,7 +249,7 @@ a {
   place-items: center;
   border-radius: 50%;
   color: #fff;
-  background: #171717;
+  background: var(--ink);
   font-family: "Urbanist Variable", Urbanist, sans-serif;
   font-size: 13px;
   font-weight: 700;
@@ -199,7 +262,7 @@ a {
 .workspace-header__user small {
   max-width: 180px;
   overflow: hidden;
-  color: #999;
+  color: var(--ink-faint);
   font-size: 8px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -371,7 +434,7 @@ a {
   min-height: 100svh;
   flex-direction: column;
   background:
-    radial-gradient(circle at 75% 50%, rgba(255, 255, 255, 0.9), transparent 34%),
+    radial-gradient(circle at 75% 50%, color-mix(in srgb, var(--surface) 90%, transparent), transparent 34%),
     var(--canvas);
 }
 
@@ -380,7 +443,7 @@ a {
   align-items: center;
   justify-content: space-between;
   padding: 35px clamp(34px, 4.2vw, 64px);
-  color: #8a8a8a;
+  color: var(--muted);
   font-size: 12px;
 }
 
@@ -461,7 +524,7 @@ a {
 }
 
 .field-group label {
-  color: #363636;
+  color: var(--ink-soft);
   font-size: 13px;
   font-weight: 600;
 }
@@ -474,7 +537,7 @@ a {
   padding: 0 16px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  color: #979797;
+  color: var(--ink-faint);
   background: var(--surface);
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
   transition:
@@ -507,7 +570,7 @@ a {
 }
 
 .input-shell input::placeholder {
-  color: #aaa;
+  color: var(--ink-faint);
 }
 
 .password-toggle {
@@ -518,14 +581,14 @@ a {
   margin-right: -9px;
   place-items: center;
   border-radius: 8px;
-  color: #888;
+  color: var(--muted);
   background: transparent;
   cursor: pointer;
 }
 
 .password-toggle:hover {
   color: var(--ink);
-  background: #f5f5f5;
+  background: var(--surface-subtle);
 }
 
 .password-toggle svg {
@@ -573,8 +636,8 @@ a {
 }
 
 .primary-button:disabled {
-  color: #a3a3a3;
-  background: #e8e8e8;
+  color: var(--ink-faint);
+  background: var(--surface-subtle);
   box-shadow: none;
   cursor: not-allowed;
 }
@@ -605,7 +668,7 @@ a {
   display: flex;
   align-items: center;
   gap: 9px;
-  color: #555;
+  color: var(--ink-soft);
   font-size: 12px;
   cursor: pointer;
 }
@@ -623,10 +686,10 @@ a {
   width: 18px;
   height: 18px;
   place-items: center;
-  border: 1px solid #d0d0d0;
+  border: 1px solid var(--border);
   border-radius: 5px;
   color: transparent;
-  background: #fff;
+  background: var(--surface);
   transition: 160ms ease;
 }
 
@@ -648,7 +711,7 @@ a {
 
 .forgot-link {
   padding: 5px 0;
-  color: #383838;
+  color: var(--ink-soft);
   font-size: 12px;
   font-weight: 600;
   text-decoration: underline;
@@ -663,7 +726,7 @@ a {
   display: flex;
   justify-content: space-between;
   padding: 24px clamp(34px, 4.2vw, 64px);
-  color: #aaa;
+  color: var(--ink-faint);
   font-size: 10px;
 }
 
@@ -725,19 +788,19 @@ a {
   border: 1px solid var(--border);
   border-radius: 10px;
   color: var(--ink);
-  background: #fff;
+  background: var(--surface);
   font-size: 12px;
   font-weight: 650;
   cursor: pointer;
 }
 
 .logout-button:hover:not(:disabled) {
-  border-color: #c9c9c9;
-  background: #fafafa;
+  border-color: var(--ink-faint);
+  background: var(--surface-subtle);
 }
 
 .logout-button:disabled {
-  color: #999;
+  color: var(--ink-faint);
   cursor: wait;
 }
 
@@ -836,6 +899,13 @@ a:focus-visible {
 }
 
 @media (max-width: 520px) {
+  .theme-toggle {
+    right: 68px;
+    bottom: 16px;
+    width: 42px;
+    height: 42px;
+  }
+
   .scroll-navigation {
     right: 16px;
     bottom: 16px;

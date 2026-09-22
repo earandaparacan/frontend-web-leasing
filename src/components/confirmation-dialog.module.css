@@ -10,3 +10,6 @@
 .actions button:hover { filter: brightness(.96); }
 .actions button:focus-visible { outline: 3px solid rgba(93, 107, 232, .35); outline-offset: 2px; }
 @media (max-width: 480px) { .backdrop { padding: 16px; }.dialog { padding: 23px; }.actions { flex-direction: column-reverse; }.actions button { width: 100%; } }
+/* Dark theme */
+:global(html[data-theme="dark"]) .dialog { border-color: var(--border); color: var(--ink); background: var(--surface-elevated); }
+:global(html[data-theme="dark"]) .cancelButton { border-color: var(--border); color: var(--ink); background: var(--surface-subtle); }

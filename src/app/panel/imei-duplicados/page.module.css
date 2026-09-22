@@ -65,3 +65,10 @@
     grid-template-columns: 1fr;
   }
 }
+/* Dark theme */
+:global(html[data-theme="dark"]) :is(.summary, .card, .empty) { border-color: var(--border); background: var(--surface); }
+:global(html[data-theme="dark"]) .page :is(h1, h2, h3, strong, input, select) { color: var(--ink); }
+:global(html[data-theme="dark"]) .page :is(p, span, .note, nav, label) { color: var(--muted); }
+:global(html[data-theme="dark"]) .filters :is(input, select, .exportButton),
+:global(html[data-theme="dark"]) .pagination a { border-color: var(--border); color: var(--ink); background: var(--surface-subtle); }
+:global(html[data-theme="dark"]) .orders li { border-color: var(--border); }

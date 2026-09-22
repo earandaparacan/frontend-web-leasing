@@ -109,3 +109,11 @@
   .summaryItem:last-child { border-bottom: 0; }
   .caseActions a { width: 100%; text-align: center; }
 }
+/* Dark theme */
+:global(html[data-theme="dark"]) :is(.dashboard, .content, .caseCard, .filters, .caseList) { border-color: var(--border); background: var(--surface); color: var(--ink); }
+:global(html[data-theme="dark"]) .page :is(h1, h2, h3, strong, input, select) { color: var(--ink); }
+:global(html[data-theme="dark"]) .page :is(p, small, span, .breadcrumb, label) { color: var(--muted); }
+:global(html[data-theme="dark"]) :is(.metricCard, .summaryItem, .resultsHeader, .pagination) { border-color: var(--border); }
+:global(html[data-theme="dark"]) :is(.metricIcon, .summaryIcon, .resultsHeader > strong) { color: var(--ink-soft); background: var(--surface-subtle); }
+:global(html[data-theme="dark"]) .filters :is(input, select) { border-color: var(--border); background: var(--surface-subtle); }
+:global(html[data-theme="dark"]) .caseList { background: color-mix(in srgb, var(--canvas) 55%, var(--surface)); }

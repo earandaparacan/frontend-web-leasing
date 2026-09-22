@@ -205,3 +205,11 @@
     grid-template-columns: 1fr;
   }
 }
+/* Dark theme */
+:global(html[data-theme="dark"]) :is(.detail, .bulkCancellation, .exportDialog) { border-color: var(--border); background: var(--surface); }
+:global(html[data-theme="dark"]) .page :is(h1, h2, h3, strong, input, select) { color: var(--ink); }
+:global(html[data-theme="dark"]) .page :is(p, span, small, td, th, label, .back) { color: var(--muted); }
+:global(html[data-theme="dark"]) :is(.search, .dateField, .filters input, .filters select, .exportButton) { border-color: var(--border); color: var(--ink); background: var(--surface-subtle); }
+:global(html[data-theme="dark"]) .tableWrap :is(th, td, tr),
+:global(html[data-theme="dark"]) .pagination { border-color: var(--border); background-color: var(--surface); }
+:global(html[data-theme="dark"]) .tableWrap tbody tr:hover { background: var(--surface-subtle); }

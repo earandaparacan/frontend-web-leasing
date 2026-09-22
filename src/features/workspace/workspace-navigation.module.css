@@ -310,3 +310,17 @@
     gap: 9px;
   }
 }
+
+:global(html[data-theme="dark"]) .mobileHeader {
+  border-color: var(--border);
+  background: var(--overlay-surface);
+}
+
+:global(html[data-theme="dark"]) .mobileHeader :global(.wordmark) {
+  color: var(--ink);
+}
+
+:global(html[data-theme="dark"]) .menuButton {
+  color: #111;
+  background: var(--ink);
+}

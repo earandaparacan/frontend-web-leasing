@@ -861,3 +861,35 @@
   }
   .cardHeading select { width: 100%; margin-left: 0; }
 }
+/* Dark theme */
+:global(html[data-theme="dark"]) :is(.metricCard, .alertCard, .activityCard, .executionCard, .tooltipPanel) {
+  border-color: var(--border);
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: 0 15px 36px -34px var(--shadow);
+}
+
+:global(html[data-theme="dark"]) :is(.metricCard, .alertCard, .activityCard, .executionCard) :is(h2, h3, strong) {
+  color: var(--ink);
+}
+
+:global(html[data-theme="dark"]) :is(.metricLabel, .sectionHeading, .emptyCopy, .status, .activityItem time, .executionItem time) {
+  color: var(--muted);
+}
+
+:global(html[data-theme="dark"]) :is(.alertItem, .executionItem, .activityItem) {
+  border-color: var(--border);
+}
+
+:global(html[data-theme="dark"]) .quickActions {
+  border-color: var(--border);
+  background: #151619;
+}
+
+:global(html[data-theme="dark"]) :is(.alertItem, .alertItemWarning) {
+  background: var(--surface-subtle);
+}
+
+:global(html[data-theme="dark"]) :is(.tooltipDivider, .activityList, .executionList) {
+  border-color: var(--border);
+}

@@ -132,3 +132,9 @@
     flex-direction: column;
   }
 }
+/* Dark theme */
+:global(html[data-theme="dark"]) :is(.summary, .list, .empty, .error) { border-color: var(--border); background: var(--surface); }
+:global(html[data-theme="dark"]) .page :is(h1, h2, strong, td) { color: var(--ink); }
+:global(html[data-theme="dark"]) .page :is(p, span, small, th, .backLink) { color: var(--muted); }
+:global(html[data-theme="dark"]) .tableWrap :is(th, td),
+:global(html[data-theme="dark"]) .listHeading { border-color: var(--border); background: var(--surface); }
