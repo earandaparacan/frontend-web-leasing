@@ -17,7 +17,12 @@
 .dashboard > header { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 16px; }
 .dashboard > header span { color: var(--brand-orange); font-size: 11px; font-weight: 760; letter-spacing: .14em; }
 .dashboard > header h2 { margin: 4px 0 0; font-family: "Urbanist Variable", Urbanist, sans-serif; font-size: 23px; letter-spacing: -.025em; }
-.dashboard > header > small { color: #8a8b91; font-size: 11px; }
+.dashboardActions { display: flex; align-items: center; gap: 14px; }
+.dashboardActions small { color: #8a8b91; font-size: 11px; }
+.dashboardActions a { display: inline-flex; min-height: 38px; align-items: center; justify-content: center; gap: 7px; padding: 8px 12px; border: 1px solid #dedede; border-radius: 9px; color: #333; background: #fff; font-size: 12px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.dashboardActions a:hover { border-color: var(--brand-orange); color: var(--brand-orange); background: #fff8f5; }
+.dashboardActions a:focus-visible { outline: 3px solid rgba(255,94,43,.2); outline-offset: 2px; }
+.dashboardActions svg { width: 16px; height: 16px; }
 .metrics { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); }
 .metricCard { display: flex; min-width: 0; min-height: 104px; align-items: center; gap: 12px; padding: 14px 16px; border-right: 1px solid #e8eaed; }
 .metricCard:last-child { border-right: 0; }
@@ -93,7 +98,9 @@
   .headerIcon { grid-row: 1; }
   .dashboard { padding: 16px; }
   .dashboard > header { align-items: flex-start; flex-direction: column; }
-  .dashboard > header > small { display: none; }
+  .dashboardActions { width: 100%; align-items: flex-start; flex-direction: column; }
+  .dashboardActions small { display: none; }
+  .dashboardActions a { width: 100%; }
   .metrics { grid-template-columns: 1fr; }
   .metricCard { min-height: 84px; }
   .metricCard, .metricCard:nth-child(3), .metricCard:last-child { border-right: 0; border-bottom: 1px solid #e8eaed; }
@@ -115,5 +122,6 @@
 :global(html[data-theme="dark"]) .page :is(p, small, span, .breadcrumb, label) { color: var(--muted); }
 :global(html[data-theme="dark"]) :is(.metricCard, .summaryItem, .resultsHeader, .pagination) { border-color: var(--border); }
 :global(html[data-theme="dark"]) :is(.metricIcon, .summaryIcon, .resultsHeader > strong) { color: var(--ink-soft); background: var(--surface-subtle); }
+:global(html[data-theme="dark"]) .dashboardActions a { border-color: var(--border); color: var(--ink); background: var(--surface-subtle); }
 :global(html[data-theme="dark"]) .filters :is(input, select) { border-color: var(--border); background: var(--surface-subtle); }
 :global(html[data-theme="dark"]) .caseList { background: color-mix(in srgb, var(--canvas) 55%, var(--surface)); }

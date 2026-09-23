@@ -7,6 +7,7 @@ import {
   ChevronRightIcon,
   ClockIcon,
   DeviceIcon,
+  DownloadIcon,
   LockIcon,
   ReceiptIcon,
   ShieldIcon,
@@ -100,7 +101,13 @@ function CollectionsDashboard({ summary }: { summary: CollectionCasesSummary }) 
     <section className={styles.dashboard} aria-labelledby="dashboard-heading">
       <header>
         <div><span>RESUMEN GENERAL</span><h2 id="dashboard-heading">Panorama de cobranzas</h2></div>
-        <small>Datos actuales de todas las órdenes</small>
+        <div className={styles.dashboardActions}>
+          <small>Datos actuales de todas las órdenes</small>
+          <a href="/api/collections/cases/export" download>
+            <DownloadIcon />
+            Exportar a Excel
+          </a>
+        </div>
       </header>
       <div className={styles.metrics}>
         <MetricCard icon={<ReceiptIcon />} label="Órdenes totales" value={summary.total} description="Incluye activas y resueltas" />
