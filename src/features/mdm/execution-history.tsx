@@ -49,6 +49,7 @@ function downloadSummary(detail: MdmDeviceActionJobDetail | MessageJobDetail, is
     : (detail as MessageJobDetail).accepted;
   const rows = [
     ["Ejecución", detail.id], ["Fecha", formatDate(detail.createdAt)],
+    ["Realizado por", detail.createdBy.displayName],
     ["Sucursal", detail.branchName || "Sin sucursal"],
     ["Etapa", collectionPhaseLabel(detail)],
     ["Mensaje", detail.message],
@@ -86,7 +87,7 @@ function escapeSpreadsheetValue(value: string) {
 }
 
 function downloadHistory(details: Array<MdmDeviceActionJobDetail | MessageJobDetail>, isAction: boolean) {
-  const headers = ["IMEI", "Acción", "Estado", "Exitoso", "Fecha", "Sucursal", "Etapa", "Mensaje", "Intentos", "Error", "Ejecución"];
+  const headers = ["IMEI", "Acción", "Estado", "Exitoso", "Fecha", "Realizado por", "Usuario", "Sucursal", "Etapa", "Mensaje", "Intentos", "Error", "Ejecución"];
   const rows = [
     ...details.flatMap((job) => job.items.map((item) => [
       item.deviceId,
@@ -94,6 +95,8 @@ function downloadHistory(details: Array<MdmDeviceActionJobDetail | MessageJobDet
       isAction ? mdmDeviceActionJobItemLabel(item.status) : messageJobItemStatusLabel(item.status),
       item.status === (isAction ? "SUCCEEDED" : "ACCEPTED") ? "Sí" : "No",
       formatDate(job.createdAt),
+      job.createdBy.displayName,
+      job.createdBy.username,
       job.branchName || "Sin sucursal",
       collectionPhaseLabel(job),
       job.message,
@@ -109,7 +112,7 @@ function downloadHistory(details: Array<MdmDeviceActionJobDetail | MessageJobDet
     tbody tr:nth-child(even) { background: #eaf2f8; }
     .imei { mso-number-format: "\\@"; }
     .number { mso-number-format: "0"; text-align: right; }
-  </style></head><body><table><thead><tr>${headers.map((header) => `<th>${header}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${row.map((value, index) => `<td class="${index === 0 ? "imei" : index === 6 ? "number" : ""}">${escapeSpreadsheetValue(value)}</td>`).join("")}</tr>`).join("")}</tbody></table></body></html>`;
+  </style></head><body><table><thead><tr>${headers.map((header) => `<th>${header}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${row.map((value, index) => `<td class="${index === 0 ? "imei" : index === 8 ? "number" : ""}">${escapeSpreadsheetValue(value)}</td>`).join("")}</tr>`).join("")}</tbody></table></body></html>`;
   const url = URL.createObjectURL(new Blob([`\ufeff${spreadsheet}`], { type: "application/vnd.ms-excel;charset=utf-8" }));
   const link = document.createElement("a");
   link.href = url;
@@ -118,7 +121,7 @@ function downloadHistory(details: Array<MdmDeviceActionJobDetail | MessageJobDet
   URL.revokeObjectURL(url);
 }
 
-export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJobId = "", canRetry, canCancel: allowCancel }: { kind: Kind; initialAttentionOnly?: boolean; initialJobId?: string; canRetry: boolean; canCancel: boolean }) {
+export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJobId = "", currentUsername, canRetry, canCancel: allowCancel }: { kind: Kind; initialAttentionOnly?: boolean; initialJobId?: string; currentUsername: string; canRetry: boolean; canCancel: boolean }) {
   const isAction = kind === "actions";
   const baseUrl = isAction ? "/api/mdm/action-jobs" : "/api/mdm/message-jobs";
   const editUrl = isAction ? "/panel/dispositivos" : "/panel/mensajeria";
@@ -266,6 +269,8 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
     : "Mensaje";
   const canCancel = (job: MdmDeviceActionJob | MessageJob): job is MdmDeviceActionJob =>
     isAction && (job.status === "QUEUED" || job.status === "RUNNING");
+  const canManage = (job: MdmDeviceActionJob | MessageJob) =>
+    job.createdBy.username === currentUsername;
   const bulkCancellationAction = isAction
     ? actionFilter === "bloquear"
       ? "lock"
@@ -277,7 +282,7 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
     const term = search.trim().toLowerCase();
     const periodMs = period === "all" ? null : Number(period) * 24 * 60 * 60 * 1000;
     return jobs.filter((job) => {
-      const matchesSearch = !term || [action(job), label(job), job.branchName, job.id].some((value) => value.toLowerCase().includes(term));
+      const matchesSearch = !term || [action(job), label(job), job.branchName, job.id, job.createdBy.displayName, job.createdBy.username].some((value) => value.toLowerCase().includes(term));
       const matchesAction = actionFilter === "all" || action(job).toLowerCase() === actionFilter;
       const matchesStatus = statusFilter === "all"
         || (statusFilter === "attention" && ["QUEUED", "RUNNING", "PARTIAL_SUCCESS", "FAILED"].includes(status(job)))
@@ -311,7 +316,7 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
       const term = search.trim().toLowerCase();
       const periodMs = period === "all" ? null : Number(period) * 24 * 60 * 60 * 1000;
       const selectedJobs = allJobs.filter((job) => {
-        const matchesSearch = !term || [action(job), label(job), job.branchName, job.id].some((value) => value.toLowerCase().includes(term));
+        const matchesSearch = !term || [action(job), label(job), job.branchName, job.id, job.createdBy.displayName, job.createdBy.username].some((value) => value.toLowerCase().includes(term));
         const matchesAction = actionFilter === "all" || action(job).toLowerCase() === actionFilter;
         const matchesStatus = statusFilter === "all"
           || (statusFilter === "attention" && ["QUEUED", "RUNNING", "PARTIAL_SUCCESS", "FAILED"].includes(status(job)))
@@ -367,13 +372,13 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
         <section className={`${styles.detail} ${cancellationStyles.detail}`}>
           <button className={styles.textButton} type="button" onClick={() => { setDetail(null); setSelectedJobId(""); }}>← Todas las ejecuciones</button>
           <div className={styles.detailHeader}>
-            <div><div className={styles.detailTitle}><strong>{action(detail)}</strong><span className={`${styles.status} ${styles[`status--${status(detail)}`]}`}>◉ {label(detail).replace(`${action(detail)} · `, "")}</span></div><span>{formatDate(detail.createdAt)} · {detail.branchName || "Sin sucursal"}</span></div>
+            <div><div className={styles.detailTitle}><strong>{action(detail)}</strong><span className={`${styles.status} ${styles[`status--${status(detail)}`]}`}>◉ {label(detail).replace(`${action(detail)} · `, "")}</span></div><span>{formatDate(detail.createdAt)} · {detail.branchName || "Sin sucursal"} · Realizado por {detail.createdBy.displayName}</span></div>
             <div className={styles.actions}>
-              {canRetry ? <Link href={`${editUrl}?editarEjecucion=${encodeURIComponent(detail.id)}`}>Editar y reejecutar</Link> : null}
-              {allowCancel && canCancel(detail) ? <button type="button" onClick={() => setJobToCancel(detail)} disabled={cancelling === detail.id}>{cancelling === detail.id ? "Cancelando…" : "Cancelar"}</button> : null}
-              {canRetry && terminal(detail) ? <button type="button" onClick={() => setJobToRerun(detail)} disabled={rerunning === detail.id}>{rerunning === detail.id ? "Reejecutando…" : "Reejecutar"}</button> : null}
+              {canRetry && canManage(detail) ? <Link href={`${editUrl}?editarEjecucion=${encodeURIComponent(detail.id)}`}>Editar y reejecutar</Link> : null}
+              {allowCancel && canManage(detail) && canCancel(detail) ? <button type="button" onClick={() => setJobToCancel(detail)} disabled={cancelling === detail.id}>{cancelling === detail.id ? "Cancelando…" : "Cancelar"}</button> : null}
+              {canRetry && canManage(detail) && terminal(detail) ? <button type="button" onClick={() => setJobToRerun(detail)} disabled={rerunning === detail.id}>{rerunning === detail.id ? "Reejecutando…" : "Reejecutar"}</button> : null}
               <button className={styles.downloadButton} type="button" onClick={() => downloadSummary(detail, isAction)}>Descargar Excel</button>
-              {canRetry ? <div className={styles.menu}><button className={styles.moreButton} type="button" aria-label="Más opciones" aria-expanded={menuJobId === detail.id} onClick={() => setMenuJobId(menuJobId === detail.id ? "" : detail.id)}>⋮</button>{menuJobId === detail.id ? <div className={styles.menuPanel}><Link href={`${editUrl}?editarEjecucion=${encodeURIComponent(detail.id)}`}>Editar y reejecutar</Link></div> : null}</div> : null}
+              {canRetry && canManage(detail) ? <div className={styles.menu}><button className={styles.moreButton} type="button" aria-label="Más opciones" aria-expanded={menuJobId === detail.id} onClick={() => setMenuJobId(menuJobId === detail.id ? "" : detail.id)}>⋮</button>{menuJobId === detail.id ? <div className={styles.menuPanel}><Link href={`${editUrl}?editarEjecucion=${encodeURIComponent(detail.id)}`}>Editar y reejecutar</Link></div> : null}</div> : null}
             </div>
           </div>
           {isAction && (detail as MdmDeviceActionJobDetail).message ? <p className={styles.message}><span aria-hidden="true">i</span>{(detail as MdmDeviceActionJobDetail).message}</p> : null}
@@ -403,10 +408,10 @@ export function ExecutionHistory({ kind, initialAttentionOnly = false, initialJo
           ) : null}
           {loading ? <p className={styles.empty}>Cargando ejecuciones…</p> : jobs.length === 0 ? <p className={styles.empty}>Todavía no hay ejecuciones registradas.</p> : visibleJobs.length === 0 ? <p className={styles.empty}>No hay ejecuciones que coincidan con los filtros.</p> : (
             <section className={styles.tableWrap} aria-label="Ejecuciones registradas">
-              <table><thead><tr><th>Acción</th><th>Estado</th><th>Fecha</th><th>Sucursal</th><th>Etapa</th><th>Resultado</th><th>Acciones</th></tr></thead><tbody>
+              <table><thead><tr><th>Acción</th><th>Estado</th><th>Fecha</th><th>Realizado por</th><th>Sucursal</th><th>Etapa</th><th>Resultado</th><th>Acciones</th></tr></thead><tbody>
                 {pagedJobs.map((job) => <tr key={job.id} onClick={() => void openDetail(job.id)} className={styles.row}>
-                  <td data-label="Acción"><strong>{action(job)}</strong></td><td data-label="Estado"><span className={`${styles.status} ${styles[`status--${status(job)}`]}`}>◉ {label(job).replace(`${action(job)} · `, "")}</span></td><td data-label="Fecha">{formatDate(job.createdAt)}</td><td data-label="Sucursal">{job.branchName || "Sin sucursal"}</td><td data-label="Etapa">{collectionPhaseLabel(job)}</td><td data-label="Resultado">{job.total} equipo{job.total === 1 ? "" : "s"} · {accepted(job)} ok · {job.failed} fallidos</td>
-                  <td className={styles.rowActions} data-label="Acciones">{allowCancel && canCancel(job) ? <button type="button" onClick={(event) => { event.stopPropagation(); setJobToCancel(job); }} disabled={cancelling === job.id}>{cancelling === job.id ? "Cancelando…" : "Cancelar"}</button> : canRetry ? <button type="button" onClick={(event) => { event.stopPropagation(); setJobToRerun(job); }} disabled={!terminal(job) || rerunning === job.id}>{rerunning === job.id ? "Reejecutando…" : "Reejecutar"}</button> : null}<div className={styles.menu}><button type="button" aria-label="Más opciones" aria-expanded={menuJobId === job.id} onClick={(event) => { event.stopPropagation(); setMenuJobId(menuJobId === job.id ? "" : job.id); }}>⋮</button>{menuJobId === job.id ? <div className={styles.menuPanel}><button type="button" onClick={() => { setMenuJobId(""); void openDetail(job.id); }}>Ver detalle</button>{canRetry ? <Link href={`${editUrl}?editarEjecucion=${encodeURIComponent(job.id)}`}>Editar y reejecutar</Link> : null}</div> : null}</div></td>
+                  <td data-label="Acción"><strong>{action(job)}</strong></td><td data-label="Estado"><span className={`${styles.status} ${styles[`status--${status(job)}`]}`}>◉ {label(job).replace(`${action(job)} · `, "")}</span></td><td data-label="Fecha">{formatDate(job.createdAt)}</td><td data-label="Realizado por">{job.createdBy.displayName}</td><td data-label="Sucursal">{job.branchName || "Sin sucursal"}</td><td data-label="Etapa">{collectionPhaseLabel(job)}</td><td data-label="Resultado">{job.total} equipo{job.total === 1 ? "" : "s"} · {accepted(job)} ok · {job.failed} fallidos</td>
+                  <td className={styles.rowActions} data-label="Acciones">{allowCancel && canManage(job) && canCancel(job) ? <button type="button" onClick={(event) => { event.stopPropagation(); setJobToCancel(job); }} disabled={cancelling === job.id}>{cancelling === job.id ? "Cancelando…" : "Cancelar"}</button> : canRetry && canManage(job) ? <button type="button" onClick={(event) => { event.stopPropagation(); setJobToRerun(job); }} disabled={!terminal(job) || rerunning === job.id}>{rerunning === job.id ? "Reejecutando…" : "Reejecutar"}</button> : null}<div className={styles.menu}><button type="button" aria-label="Más opciones" aria-expanded={menuJobId === job.id} onClick={(event) => { event.stopPropagation(); setMenuJobId(menuJobId === job.id ? "" : job.id); }}>⋮</button>{menuJobId === job.id ? <div className={styles.menuPanel}><button type="button" onClick={() => { setMenuJobId(""); void openDetail(job.id); }}>Ver detalle</button>{canRetry && canManage(job) ? <Link href={`${editUrl}?editarEjecucion=${encodeURIComponent(job.id)}`}>Editar y reejecutar</Link> : null}</div> : null}</div></td>
                 </tr>)}
               </tbody></table>
               <footer className={styles.pagination}><span>Mostrando {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, visibleJobs.length)} de {visibleJobs.length}</span><div><button type="button" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={currentPage === 1}>‹</button>{Array.from({ length: totalPages }, (_, index) => index + 1).map((value) => <button className={value === currentPage ? styles.currentPage : undefined} type="button" onClick={() => setPage(value)} key={value}>{value}</button>)}<button type="button" onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={currentPage === totalPages}>›</button></div></footer>

@@ -12,6 +12,10 @@ export type MessageJobStatus = (typeof messageJobStatuses)[number];
 
 export type MessageJob = {
   id: string;
+  createdBy: {
+    username: string;
+    displayName: string;
+  };
   branchId: number | null;
   branchName: string;
   collectionPhase: number | null;
@@ -64,11 +68,15 @@ export function parseMessageJob(value: unknown): MessageJob | null {
   if (!isRecord(value)) return null;
 
   const candidate = isRecord(value.job) ? value.job : value;
+  const createdBy = candidate.created_by;
   const branchId = candidate.branch_id;
   const collectionPhase = candidate.collection_phase;
   if (
     typeof candidate.id !== "string" ||
     candidate.id.length === 0 ||
+    !isRecord(createdBy) ||
+    typeof createdBy.username !== "string" ||
+    typeof createdBy.display_name !== "string" ||
     typeof candidate.branch_name !== "string" ||
     (branchId !== undefined && branchId !== null && !isBranchId(branchId)) ||
     (collectionPhase !== undefined && collectionPhase !== null && !isCollectionPhase(collectionPhase)) ||
@@ -86,6 +94,10 @@ export function parseMessageJob(value: unknown): MessageJob | null {
 
   return {
     id: candidate.id,
+    createdBy: {
+      username: createdBy.username,
+      displayName: createdBy.display_name,
+    },
     branchId: isBranchId(branchId) ? branchId : null,
     branchName: candidate.branch_name,
     collectionPhase: isCollectionPhase(collectionPhase) ? collectionPhase : null,

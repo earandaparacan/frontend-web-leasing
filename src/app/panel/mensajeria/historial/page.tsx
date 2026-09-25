@@ -11,5 +11,5 @@ export default async function MessageHistoryPage({ searchParams }: HistoryPagePr
   const { ejecucion } = await searchParams;
   const initialJobId = typeof ejecucion === "string" ? ejecucion : undefined;
 
-  return <ExecutionHistory kind="messages" initialJobId={initialJobId} canRetry={hasStaffPermission(user, STAFF_PERMISSIONS.retryMessages)} canCancel={false} />;
+  return <ExecutionHistory kind="messages" initialJobId={initialJobId} currentUsername={user.username} canRetry={hasStaffPermission(user, STAFF_PERMISSIONS.retryMessages)} canCancel={false} />;
 }

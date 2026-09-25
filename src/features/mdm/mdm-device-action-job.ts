@@ -8,6 +8,10 @@ export type MdmDeviceActionJobStatus =
 
 export type MdmDeviceActionJob = {
   id: string;
+  createdBy: {
+    username: string;
+    displayName: string;
+  };
   branchId: number | null;
   branchName: string;
   collectionPhase: number | null;
@@ -57,10 +61,15 @@ function isCollectionPhase(value: unknown): value is number {
 export function parseMdmDeviceActionJob(value: unknown): MdmDeviceActionJob | null {
   if (typeof value !== "object" || value === null) return null;
   const job = value as Record<string, unknown>;
+  const createdBy = job.created_by;
   const branchId = job.branch_id;
   const collectionPhase = job.collection_phase;
   if (
     typeof job.id !== "string" ||
+    typeof createdBy !== "object" ||
+    createdBy === null ||
+    typeof (createdBy as Record<string, unknown>).username !== "string" ||
+    typeof (createdBy as Record<string, unknown>).display_name !== "string" ||
     typeof job.branch_name !== "string" ||
     (branchId !== undefined && branchId !== null && !isBranchId(branchId)) ||
     (collectionPhase !== undefined && collectionPhase !== null && !isCollectionPhase(collectionPhase)) ||
@@ -82,6 +91,10 @@ export function parseMdmDeviceActionJob(value: unknown): MdmDeviceActionJob | nu
 
   return {
     id: job.id,
+    createdBy: {
+      username: (createdBy as Record<string, string>).username,
+      displayName: (createdBy as Record<string, string>).display_name,
+    },
     branchId: isBranchId(branchId) ? branchId : null,
     branchName: job.branch_name,
     collectionPhase: isCollectionPhase(collectionPhase) ? collectionPhase : null,

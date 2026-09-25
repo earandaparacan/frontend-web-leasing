@@ -14,5 +14,5 @@ export default async function DeviceHistoryPage({ searchParams }: HistoryPagePro
   const initialJobId = typeof ejecucion === "string" ? ejecucion : undefined;
   const initialAttentionOnly = filtro === "atencion";
 
-  return <ExecutionHistory kind="actions" initialAttentionOnly={initialAttentionOnly} initialJobId={initialJobId} canRetry={hasStaffPermission(user, STAFF_PERMISSIONS.retryActions)} canCancel={hasStaffPermission(user, STAFF_PERMISSIONS.cancelActions)} />;
+  return <ExecutionHistory kind="actions" initialAttentionOnly={initialAttentionOnly} initialJobId={initialJobId} currentUsername={user.username} canRetry={hasStaffPermission(user, STAFF_PERMISSIONS.retryActions)} canCancel={hasStaffPermission(user, STAFF_PERMISSIONS.cancelActions)} />;
 }
